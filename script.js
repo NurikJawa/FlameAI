@@ -1,155 +1,152 @@
-// --- ТРЕУГОЛЬНИКИ ---
+// Конфигурация фона (Canvas)
 const canvas = document.getElementById('bg-canvas');
 const ctx = canvas.getContext('2d');
-let triangles = [];
-let mouse = { x: -1000, y: -1000 };
+let dots = [];
+const dotCount = 60;
 
-function resize() {
+function initCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-}
-window.addEventListener('resize', resize);
-resize();
-window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
-
-class Triangle {
-    constructor() { this.init(); }
-    init() {
-        this.x = Math.random() * canvas.width;
-        this.y = Math.random() * canvas.height;
-        this.size = Math.random() * 50 + 20;
-        this.color = `rgba(255, 255, 255, ${Math.random() * 0.3 + 0.15})`;
-        this.angle = Math.random() * Math.PI * 2;
-        this.rotation = (Math.random() - 0.5) * 0.015;
-        this.speedX = (Math.random() - 0.5) * 0.6;
-        this.speedY = (Math.random() - 0.5) * 0.6;
-        this.opacity = 0;
-        this.maxOpacity = Math.random() * 0.4;
-        this.morph = Math.random() * 10;
-    }
-    draw() {
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.rotate(this.angle);
-        ctx.beginPath();
-        for(let i = 0; i < 3; i++) {
-            let r = this.size + Math.sin(this.morph + i) * 8;
-            let x = r * Math.cos(i * 2 * Math.PI / 3);
-            let y = r * Math.sin(i * 2 * Math.PI / 3);
-            if(i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-        }
-        ctx.closePath();
-        ctx.strokeStyle = this.color;
-        ctx.lineWidth = 1.2;
-        ctx.shadowBlur = 10; ctx.shadowColor = "white";
-        ctx.globalAlpha = this.opacity;
-        ctx.stroke();
-        ctx.restore();
-    }
-    update() {
-        this.x += this.speedX; this.y += this.speedY; this.angle += this.rotation; this.morph += 0.02;
-        let dx = this.x - mouse.x; let dy = this.y - mouse.y;
-        let dist = Math.sqrt(dx*dx + dy*dy);
-        
-        // Плавное убегание (радиус 120)
-        if(dist < 120) { 
-            this.x += dx / 120; 
-            this.y += dy / 120; 
-        } 
-        if (this.opacity < this.maxOpacity) this.opacity += 0.005;
-        if(this.x < -100 || this.x > canvas.width + 100 || this.y < -100 || this.y > canvas.height + 100) this.init();
+    dots = [];
+    for (let i = 0; i < dotCount; i++) {
+        dots.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            vx: (Math.random() - 0.5) * 0.5,
+            vy: (Math.random() - 0.5) * 0.5,
+            size: Math.random() * 2
+        });
     }
 }
-
-// 60 треугольников для красоты
-for(let i = 0; i < 60; i++) triangles.push(new Triangle());
 
 function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    triangles.forEach(t => { t.update(); t.draw(); });
+    ctx.fillStyle = 'rgba(255, 77, 77, 0.2)';
+    
+    dots.forEach(dot => {
+        dot.x += dot.vx;
+        dot.y += dot.vy;
+        
+        if (dot.x < 0 || dot.x > canvas.width) dot.vx *= -1;
+        if (dot.y < 0 || dot.y > canvas.height) dot.vy *= -1;
+        
+        ctx.beginPath();
+        ctx.arc(dot.x, dot.y, dot.size, 0, Math.PI * 2);
+        ctx.fill();
+    });
     requestAnimationFrame(animate);
 }
+
+window.addEventListener('resize', initCanvas);
+initCanvas();
 animate();
 
-// --- ЛОГИКА ЧАТОВ ---
-const sendBtn = document.getElementById('send-btn');
-const userInput = document.getElementById('user-input');
+// Логика Чат-системы
 const chatMessages = document.getElementById('chat-messages');
-const chatListContainer = document.getElementById('chat-list');
-const newChatBtn = document.getElementById('new-chat-btn');
+const userInput = document.getElementById('user-input');
+const sendBtn = document.getElementById('send-btn');
+const sidebar = document.getElementById('sidebar');
+const menuToggle = document.getElementById('menu-toggle');
 
-let currentChatId = Date.now();
-let allChats = JSON.parse(localStorage.getItem('flame_chats')) || [];
-
-function renderChatList() {
-    chatListContainer.innerHTML = '';
-    allChats.forEach(chat => {
-        const item = document.createElement('div');
-        item.className = 'chat-item';
-        item.innerText = chat.title;
-        item.onclick = () => loadChat(chat.id);
-        chatListContainer.appendChild(item);
-    });
-}
-
-function saveMessage(text, isUser) {
-    let chat = allChats.find(c => c.id === currentChatId);
-    if (!chat) {
-        chat = { id: currentChatId, title: text.substring(0, 20) + '...', messages: [] };
-        allChats.unshift(chat);
+function createMessageElement(role, text) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${role}-message`;
+    
+    // Стилизация через JS (чтобы точно не слетело)
+    messageDiv.style.padding = '15px 20px';
+    messageDiv.style.borderRadius = '15px';
+    messageDiv.style.marginBottom = '20px';
+    messageDiv.style.maxWidth = '85%';
+    messageDiv.style.fontSize = '15px';
+    messageDiv.style.lineHeight = '1.6';
+    messageDiv.style.position = 'relative';
+    messageDiv.style.animation = 'fadeIn 0.4s ease forwards';
+    
+    if (role === 'user') {
+        messageDiv.style.background = 'rgba(45, 45, 45, 0.8)';
+        messageDiv.style.border = '1px solid #444';
+        messageDiv.style.alignSelf = 'flex-end';
+        messageDiv.style.color = '#fff';
+    } else {
+        messageDiv.style.background = 'rgba(255, 77, 77, 0.05)';
+        messageDiv.style.border = '1px solid rgba(255, 77, 77, 0.2)';
+        messageDiv.style.alignSelf = 'flex-start';
+        messageDiv.style.color = '#e0e0e0';
+        messageDiv.style.boxShadow = '0 0 20px rgba(0,0,0,0.2)';
     }
-    chat.messages.push({ text, isUser });
-    localStorage.setItem('flame_chats', JSON.stringify(allChats));
-    renderChatList();
+
+    messageDiv.innerHTML = `<div class="text">${text}</div>`;
+    return messageDiv;
 }
 
-function loadChat(id) {
-    const chat = allChats.find(c => c.id === id);
-    if (!chat) return;
-    currentChatId = id;
-    chatMessages.innerHTML = '';
-    chat.messages.forEach(msg => addMessageUI(msg.text, msg.isUser ? 'user-message' : 'ai-message'));
-}
-
-newChatBtn.onclick = () => {
-    currentChatId = Date.now();
-    chatMessages.innerHTML = '';
-    addMessageUI('Система очищена. Новый поток данных запущен.', 'ai-message');
-};
-
-async function sendMessage() {
+async function handleSendMessage() {
     const text = userInput.value.trim();
     if (!text) return;
-    addMessageUI(text, 'user-message');
-    saveMessage(text, true);
+
+    // Добавляем сообщение пользователя
+    const userMsg = createMessageElement('user', text);
+    chatMessages.appendChild(userMsg);
+    
     userInput.value = '';
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    // Индикатор загрузки
+    const typingMsg = createMessageElement('assistant', 'Генерация ответа...');
+    chatMessages.appendChild(typingMsg);
 
     try {
-        // УНИВЕРСАЛЬНЫЙ ПУТЬ для локалки и хостинга
-        const response = await fetch('/chat', { 
+        const response = await fetch('/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message: text })
         });
-        const data = await response.json();
-        addMessageUI(data.reply, 'ai-message');
-        saveMessage(data.reply, false);
-    } catch (e) {
-        addMessageUI('Критическая ошибка связи.', 'ai-message');
-    }
-}
 
-function addMessageUI(text, className) {
-    const div = document.createElement('div');
-    div.className = `message ${className}`;
-    div.innerText = text;
-    chatMessages.appendChild(div);
+        const data = await response.json();
+        chatMessages.removeChild(typingMsg);
+
+        if (data.reply) {
+            const botMsg = createMessageElement('assistant', data.reply);
+            chatMessages.appendChild(botMsg);
+        } else {
+            const errorMsg = createMessageElement('assistant', '⚠️ Ошибка системы. Попробуйте позже.');
+            chatMessages.appendChild(errorMsg);
+        }
+    } catch (error) {
+        chatMessages.removeChild(typingMsg);
+        const errorMsg = createMessageElement('assistant', '❌ Нет связи с сервером.');
+        chatMessages.appendChild(errorMsg);
+    }
+    
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-sendBtn.addEventListener('click', sendMessage);
-userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
-renderChatList();
-if (allChats.length > 0) loadChat(allChats[0].id);
-else addMessageUI('FlameAI готов. Жду вводных данных.', 'ai-message');
+// Обработчики событий
+sendBtn.addEventListener('click', handleSendMessage);
+userInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') handleSendMessage();
+});
+
+// МОБИЛЬНАЯ МАГИЯ (Твоё новое меню)
+if (menuToggle) {
+    menuToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        sidebar.classList.toggle('active');
+    });
+}
+
+// Закрытие меню при клике на чат
+document.addEventListener('click', (e) => {
+    if (sidebar.classList.contains('active') && !sidebar.contains(e.target)) {
+        sidebar.classList.remove('active');
+    }
+});
+
+// Кнопка "Новый чат" - просто очистка (для начала)
+document.getElementById('new-chat-btn').addEventListener('click', () => {
+    chatMessages.innerHTML = '';
+    const welcome = createMessageElement('assistant', 'Система FlameAI инициализирована. Память очищена. Чем могу помочь?');
+    chatMessages.appendChild(welcome);
+    sidebar.classList.remove('active');
+});
+
+console.log("🔥 FlameAI Engine Loaded Successfully");

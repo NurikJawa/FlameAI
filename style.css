@@ -1,97 +1,257 @@
-/* --- ГЛОБАЛЬНЫЙ КЛИНИНГ И БЛОКИРОВКА СИСТЕМНЫХ ПОЛОС --- */
-* {
+/**
+ * FlameAI CORE STYLESHEET - DESKTOP ONLY EDITION
+ * Version: 13.0 (Monolith)
+ * Target: PC / Widescreen Displays
+ * ---------------------------------------------------------
+ * Полностью удален мобильный адаптив.
+ * Все элементы жестко зафиксированы.
+ */
+
+/* ==========================================================================
+   GLOBAL VARIABLES & THEMING
+   ========================================================================== */
+:root {
+    /* Color Palette */
+    --flame-bg-pure-black: #000000;
+    --flame-bg-deep-space: #000814;
+    --flame-bg-abyss-blue: #001233;
+    
+    /* Accents */
+    --flame-accent-primary: #0047ab;
+    --flame-accent-secondary: #007bff;
+    --flame-accent-cyan: #00b4d8;
+    --flame-accent-glow: rgba(0, 123, 255, 0.6);
+    --flame-error-red: #ff4d4d;
+    
+    /* Typography Colors */
+    --flame-text-primary: #ffffff;
+    --flame-text-secondary: #a0aabf;
+    --flame-text-muted: #5c677d;
+    --flame-text-placeholder: rgba(255, 255, 255, 0.3);
+    
+    /* Glassmorphism Backgrounds */
+    --glass-bg-sidebar: rgba(0, 5, 15, 0.85);
+    --glass-bg-header: rgba(0, 5, 15, 0.6);
+    --glass-bg-message-ai: rgba(255, 255, 255, 0.04);
+    --glass-bg-message-user: rgba(0, 71, 171, 0.25);
+    --glass-bg-input: rgba(255, 255, 255, 0.03);
+    --glass-bg-input-focus: rgba(255, 255, 255, 0.06);
+    
+    /* Borders */
+    --border-subtle-light: rgba(255, 255, 255, 0.05);
+    --border-subtle-medium: rgba(255, 255, 255, 0.1);
+    --border-accent-glow: rgba(0, 123, 255, 0.4);
+    
+    /* Shadows */
+    --shadow-elevation-1: 0 4px 12px rgba(0, 0, 0, 0.5);
+    --shadow-elevation-2: 0 8px 24px rgba(0, 0, 0, 0.6);
+    --shadow-elevation-3: 0 16px 48px rgba(0, 0, 0, 0.8);
+    --shadow-glow-primary: 0 0 20px var(--flame-accent-glow);
+    
+    /* Typography Setup */
+    --font-family-base: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --font-family-code: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    
+    /* Geometry & Spacing */
+    --sidebar-width: 380px; /* Фиксированная, широкая десктопная панель */
+    --radius-small: 8px;
+    --radius-medium: 16px;
+    --radius-large: 24px;
+    --radius-pill: 9999px;
+    
+    /* Gradients */
+    --gradient-flame-core: linear-gradient(135deg, #001233 0%, #0047ab 100%);
+    --gradient-sidebar: linear-gradient(180deg, rgba(0,0,0,0.9) 0%, rgba(0,18,51,0.8) 100%);
+    --gradient-input-zone: linear-gradient(0deg, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 100%);
+}
+
+/* ==========================================================================
+   RESET & BASE CONFIGURATION
+   ========================================================================== */
+*, *::before, *::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Inter', -apple-system, system-ui, sans-serif;
-    /* ПОЛНОЕ УДАЛЕНИЕ БЕЛЫХ ПОЛОС И РАМОК ПРИ НАЖАТИИ */
-    outline: none !important;
+    outline: none !important; /* Жесткое подавление системных рамок */
     border: none;
-    -webkit-tap-highlight-color: transparent;
-    user-select: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
-:root {
-    --bg-black: #000000;
-    --bg-blue-deep: #000a1a;
-    --accent-blue: #0047ab;
-    --accent-glow: #007bff;
-    --glass-white: rgba(255, 255, 255, 0.08);
-    --glass-blue: rgba(0, 46, 110, 0.4);
-    --text-pure: #ffffff;
-    --text-dim: #888888;
-    --rich-gradient: linear-gradient(145deg, #000000 0%, #001a4d 50%, #0047ab 100%);
-    --shadow-heavy: 0 15px 50px rgba(0, 0, 0, 0.7);
+html {
+    font-size: 16px;
+    scroll-behavior: smooth;
 }
 
 body {
-    background: linear-gradient(160deg, var(--bg-black) 0%, var(--bg-blue-deep) 100%);
-    background-attachment: fixed;
-    color: var(--text-pure);
-    height: 100vh;
+    background-color: var(--flame-bg-pure-black);
+    color: var(--flame-text-primary);
+    font-family: var(--font-family-base);
     width: 100vw;
-    display: flex;
-    overflow: hidden;
+    height: 100vh;
+    overflow: hidden; /* Блокируем прокрутку всего окна */
+    display: flex; /* СТРОГАЯ СТАТИКА: Flexbox Layout */
     position: relative;
+    user-select: none; /* Запрет выделения интерфейса */
 }
 
+/* ==========================================================================
+   CUSTOM SCROLLBARS (DESKTOP PRECISION)
+   ========================================================================== */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+    background-color: transparent;
+}
+
+::-webkit-scrollbar-track {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-pill);
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.15);
+    border-radius: var(--radius-pill);
+    transition: background-color 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+::-webkit-scrollbar-corner {
+    background-color: transparent;
+}
+
+/* ==========================================================================
+   BACKGROUND CANVAS (PARTICLE ENGINE RENDER TARGET)
+   ========================================================================== */
 #bg-canvas {
     position: fixed;
     top: 0;
     left: 0;
-    z-index: -1;
-    width: 100%;
-    height: 100%;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1; /* Самый нижний слой */
+    pointer-events: none; /* Пропускает клики сквозь себя */
+    background: radial-gradient(circle at 50% 50%, var(--flame-bg-deep-space) 0%, var(--flame-bg-pure-black) 100%);
 }
 
-/* --- САЙДБАР: СТАТИЧНЫЙ ДЛЯ ПК --- */
+/* ==========================================================================
+   SIDEBAR (STATIC MONOLITHIC PANEL)
+   ========================================================================== */
 .sidebar {
-    width: 340px;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.65);
-    backdrop-filter: blur(50px);
-    -webkit-backdrop-filter: blur(50px);
-    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    position: relative;
+    z-index: 100;
+    width: var(--sidebar-width);
+    min-width: var(--sidebar-width);
+    max-width: var(--sidebar-width);
+    height: 100vh;
+    background: var(--glass-bg-sidebar);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border-right: 1px solid var(--border-subtle-medium);
     display: flex;
     flex-direction: column;
-    padding: 40px 25px;
-    z-index: 2000;
-    transition: transform 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+    padding: 30px;
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+    flex-shrink: 0; /* ЗАПРЕТ СЖАТИЯ */
 }
 
-.new-chat-btn {
-    background: var(--rich-gradient);
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 22px;
-    border-radius: 16px;
-    cursor: pointer;
+/* Sidebar Logo / Header */
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 40px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-subtle-light);
+}
+
+.flame-logo-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--gradient-flame-core);
+    border-radius: var(--radius-small);
+    box-shadow: var(--shadow-glow-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-weight: 900;
+    font-size: 18px;
+    letter-spacing: -1px;
+}
+
+.flame-logo-text {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    background: linear-gradient(90deg, #ffffff, #88bbfc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* New Chat Button */
+.new-chat-btn {
+    width: 100%;
+    padding: 20px 24px;
+    background: var(--gradient-flame-core);
+    color: var(--flame-text-primary);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--radius-medium);
+    font-size: 15px;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 3px;
-    margin-bottom: 45px;
-    transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    box-shadow: var(--shadow-heavy);
+    letter-spacing: 2px;
+    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 12px;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    box-shadow: var(--shadow-elevation-2);
+    margin-bottom: 40px;
+}
+
+.new-chat-btn svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+    transition: transform 0.4s ease;
 }
 
 .new-chat-btn:hover {
-    transform: scale(1.02) translateY(-4px);
-    box-shadow: 0 20px 45px rgba(0, 71, 171, 0.5);
-    filter: brightness(1.2);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 25px rgba(0, 71, 171, 0.5);
+    border-color: rgba(255, 255, 255, 0.4);
+    background: linear-gradient(135deg, #001a4d 0%, #005ce6 100%);
 }
 
-.history-label {
-    font-size: 10px;
-    color: #555;
+.new-chat-btn:hover svg {
+    transform: rotate(90deg);
+}
+
+.new-chat-btn:active {
+    transform: translateY(1px);
+    box-shadow: var(--shadow-elevation-1);
+}
+
+/* History Section */
+.history-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Скролл только внутри списка */
+}
+
+.history-title {
+    font-size: 11px;
+    color: var(--flame-text-muted);
+    font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 5px;
-    margin-bottom: 25px;
-    font-weight: 900;
-    padding-left: 10px;
+    letter-spacing: 4px;
+    margin-bottom: 20px;
+    padding-left: 5px;
 }
 
 .chat-list {
@@ -99,193 +259,487 @@ body {
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 15px;
-    padding-right: 10px;
+    gap: 10px;
+    padding-right: 10px; /* Место под скроллбар */
 }
 
+/* Chat Item Components */
 .chat-item {
-    padding: 18px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 14px;
-    cursor: pointer;
-    font-size: 14px;
-    color: var(--text-dim);
-    border: 1px solid transparent;
-    transition: 0.4s;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     position: relative;
+    padding: 18px 20px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-medium);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.2s ease;
+    overflow: hidden;
+    group: chat-item-hover;
+}
+
+.chat-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.03);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 0;
+}
+
+.chat-item:hover::before {
+    opacity: 1;
+}
+
+.chat-item-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
     overflow: hidden;
 }
 
-.chat-item:hover {
-    background: rgba(255, 255, 255, 0.08);
-    color: #fff;
-    transform: translateX(8px);
+.chat-item-icon {
+    width: 16px;
+    height: 16px;
+    fill: var(--flame-text-muted);
+    flex-shrink: 0;
+    transition: fill 0.3s ease;
 }
 
+.chat-item-title {
+    font-size: 14px;
+    color: var(--flame-text-secondary);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color 0.3s ease;
+}
+
+.chat-item-delete {
+    position: relative;
+    z-index: 2;
+    background: transparent;
+    color: var(--flame-text-muted);
+    font-size: 16px;
+    cursor: pointer;
+    opacity: 0;
+    transform: translateX(10px);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+}
+
+.chat-item:hover .chat-item-delete {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.chat-item-delete:hover {
+    color: var(--flame-error-red);
+    background: rgba(255, 77, 77, 0.1);
+}
+
+/* Active Chat Item State */
 .chat-item.active {
-    background: var(--rich-gradient);
-    color: #fff;
-    border-color: rgba(255, 255, 255, 0.15);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    background: var(--glass-bg-message-user);
+    border: 1px solid var(--border-subtle-medium);
+    box-shadow: inset 0 0 20px rgba(0, 71, 171, 0.1);
 }
 
-/* --- КОНТЕЙНЕР ЧАТА --- */
+.chat-item.active .chat-item-icon {
+    fill: var(--flame-accent-cyan);
+}
+
+.chat-item.active .chat-item-title {
+    color: var(--flame-text-primary);
+    font-weight: 600;
+}
+
+/* ==========================================================================
+   MAIN CHAT CONTAINER (DESKTOP WORKSPACE)
+   ========================================================================== */
 .chat-container {
     flex: 1;
     display: flex;
     flex-direction: column;
-    height: 100vh;
     position: relative;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.15); /* Легкое затемнение фона */
+    height: 100vh;
 }
 
+/* Top Header Bar */
 .chat-header {
-    height: 90px;
-    padding: 0 45px;
+    height: 80px;
+    min-height: 80px;
+    width: 100%;
+    padding: 0 50px;
     display: flex;
     align-items: center;
-    background: rgba(0, 0, 0, 0.2);
+    justify-content: space-between;
+    background: var(--glass-bg-header);
     backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border-subtle-light);
+    z-index: 50;
 }
 
-/* МОБИЛЬНАЯ СТРЕЛКА/БУРГЕР */
-.menu-toggle {
-    display: none;
-    font-size: 30px;
-    color: white;
-    margin-right: 25px;
-    cursor: pointer;
-    transition: 0.3s;
-}
-
-#chat-messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 50px 18%;
+.header-model-info {
     display: flex;
-    flex-direction: column;
-    gap: 18px; /* КОМПАКТНОСТЬ */
+    align-items: center;
+    gap: 15px;
 }
 
-/* --- СООБЩЕНИЯ (АККУРАТНЫЕ И КОМПАКТНЫЕ) --- */
-.message {
-    max-width: 58%;
-    padding: 14px 22px;
-    border-radius: 20px;
-    font-size: 15px;
-    line-height: 1.6;
-    backdrop-filter: blur(30px);
-    -webkit-backdrop-filter: blur(30px);
-    animation: slideUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-    position: relative;
-    user-select: text;
+.model-status-dot {
+    width: 10px;
+    height: 10px;
+    background-color: #00ff88;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #00ff88;
+    animation: pulseStatus 2s infinite;
 }
 
-@keyframes slideUp {
-    from { opacity: 0; transform: translateY(30px) scale(0.98); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.user-message {
-    align-self: flex-end;
-    background: var(--glass-blue);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-bottom-right-radius: 4px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-}
-
-.ai-message {
-    align-self: flex-start;
-    background: var(--glass-white);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-bottom-left-radius: 4px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-}
-
-/* --- ЗОНА ВВОДА --- */
-.input-area {
-    padding: 40px 18%;
-    background: linear-gradient(to top, rgba(0,0,0,1) 40%, transparent);
-}
-
-.input-wrapper {
-    max-width: 1100px;
-    margin: 0 auto;
-    position: relative;
-    display: flex;
-}
-
-#user-input {
-    width: 100%;
-    background: rgba(255, 255, 255, 0.03);
-    backdrop-filter: blur(40px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 20px;
-    padding: 24px 90px 24px 35px;
-    color: white;
+.model-name {
     font-size: 16px;
+    font-weight: 700;
+    color: var(--flame-text-primary);
+    letter-spacing: 1px;
 }
 
-#send-btn {
-    position: absolute;
-    right: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: var(--rich-gradient);
-    width: 60px;
-    height: 60px;
-    border-radius: 16px;
-    color: white;
-    cursor: pointer;
+.model-version {
+    font-size: 12px;
+    color: var(--flame-text-muted);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border-subtle-light);
+}
+
+/* Top Header Actions (Mockup for PC) */
+.header-actions {
+    display: flex;
+    gap: 15px;
+}
+
+.action-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-small);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-subtle-light);
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: 0.4s;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: var(--flame-text-secondary);
 }
 
-#send-btn:hover {
-    transform: translateY(-50%) scale(1.1) rotate(-5deg);
-    box-shadow: 0 0 30px var(--accent-glow);
+.action-icon:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--flame-text-primary);
 }
 
-/* --- !!! ГОРЯЧИЙ ФИКС ДЛЯ ТЕЛЕФОНОВ (ONLY MOBILE) !!! --- */
-@media (max-width: 768px) {
-    .menu-toggle { display: block; }
-
-    .sidebar {
-        position: fixed;
-        left: 0;
-        top: 0;
-        transform: translateX(-100%); /* СКРЫТ ЗА ЭКРАНОМ */
-        width: 85%;
-        height: 100%;
-        box-shadow: 30px 0 70px rgba(0,0,0,1);
-        z-index: 5000;
-    }
-
-    .sidebar.active {
-        transform: translateX(0); /* ВЫЕЗЖАЕТ ПРИ КЛИКЕ НА СТРЕЛКУ */
-    }
-
-    .overlay {
-        display: none;
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.7);
-        backdrop-filter: blur(8px);
-        z-index: 4000;
-    }
-
-    .overlay.active { display: block; }
-
-    #chat-messages { padding: 30px 6%; gap: 15px; }
-    .message { max-width: 90%; font-size: 14px; }
-    .input-area { padding: 25px 6%; }
+/* ==========================================================================
+   MESSAGES AREA (COMPACT BUBBLES AS REQUESTED)
+   ========================================================================== */
+#chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 60px 15% 40px 15%; /* Широкие отступы по краям для центрирования на ПК */
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    scroll-behavior: smooth;
 }
 
-/* СКРОЛЛБАР */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+/* Blank Slate / Welcome Screen */
+.welcome-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    animation: fadeInWelcome 1s ease forwards;
+}
+
+.welcome-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+    filter: drop-shadow(0 0 20px var(--flame-accent-glow));
+}
+
+.welcome-title {
+    font-size: 32px;
+    font-weight: 800;
+    margin-bottom: 10px;
+    background: linear-gradient(to right, #ffffff, #00b4d8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.welcome-subtitle {
+    font-size: 16px;
+    color: var(--flame-text-muted);
+    max-width: 400px;
+    line-height: 1.6;
+}
+
+/* General Message Bubble Styling */
+.message-wrapper {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    animation: slideUpMessage 0.5s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+.message-sender-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--flame-text-muted);
+    margin-bottom: 6px;
+    margin-left: 4px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.message {
+    max-width: 50%; /* СТРОГАЯ КОМПАКТНОСТЬ: Облачка узкие и аккуратные */
+    padding: 16px 22px; /* Меньше жира, больше элегантности */
+    font-size: 15px;
+    line-height: 1.6;
+    letter-spacing: 0.2px;
+    position: relative;
+    user-select: text; /* Разрешаем выделять текст */
+    word-wrap: break-word;
+    box-shadow: var(--shadow-elevation-1);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+}
+
+/* User Message Specifics */
+.user-wrapper {
+    align-items: flex-end;
+}
+
+.user-wrapper .message-sender-name {
+    margin-right: 4px;
+    margin-left: 0;
+}
+
+.user-message {
+    background: var(--glass-bg-message-user);
+    color: var(--flame-text-primary);
+    border: 1px solid var(--border-accent-glow);
+    border-radius: 20px 20px 4px 20px; /* Острый угол справа внизу */
+    box-shadow: 0 8px 32px rgba(0, 71, 171, 0.15);
+}
+
+/* FlameAI Message Specifics */
+.ai-wrapper {
+    align-items: flex-start;
+}
+
+.ai-message {
+    background: var(--glass-bg-message-ai);
+    color: #e2e8f0;
+    border: 1px solid var(--border-subtle-medium);
+    border-radius: 20px 20px 20px 4px; /* Острый угол слева внизу */
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* Typing Indicator Styling */
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 20px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 20px 20px 20px 4px;
+    border: 1px solid var(--border-subtle-light);
+    width: fit-content;
+}
+
+.typing-dot {
+    width: 6px;
+    height: 6px;
+    background-color: var(--flame-text-secondary);
+    border-radius: 50%;
+    animation: typingBounce 1.4s infinite ease-in-out both;
+}
+
+.typing-dot:nth-child(1) { animation-delay: -0.32s; }
+.typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+/* ==========================================================================
+   INPUT ZONE (BOTTOM GRADIENT AREA)
+   ========================================================================== */
+.input-container {
+    padding: 30px 15% 50px 15%;
+    background: var(--gradient-input-zone);
+    position: relative;
+    z-index: 50;
+    width: 100%;
+}
+
+.input-box {
+    position: relative;
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    align-items: flex-end;
+    background: var(--glass-bg-input);
+    border: 1px solid var(--border-subtle-medium);
+    border-radius: var(--radius-large);
+    padding: 8px;
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-elevation-2);
+}
+
+.input-box:focus-within {
+    background: var(--glass-bg-input-focus);
+    border-color: var(--flame-accent-glow);
+    box-shadow: 0 10px 40px rgba(0, 123, 255, 0.15), inset 0 0 15px rgba(255,255,255,0.02);
+    transform: translateY(-2px);
+}
+
+/* Advanced Textarea Setup */
+#user-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--flame-text-primary);
+    font-size: 16px;
+    line-height: 1.5;
+    padding: 16px 20px;
+    resize: none;
+    max-height: 200px; /* Растет до определенного предела */
+    height: 56px;
+    overflow-y: auto;
+    font-family: inherit;
+}
+
+#user-input::placeholder {
+    color: var(--flame-text-placeholder);
+    transition: opacity 0.3s ease;
+}
+
+#user-input:focus::placeholder {
+    opacity: 0.5;
+}
+
+/* Action Buttons inside Input */
+.input-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px;
+}
+
+.attach-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    background: transparent;
+    color: var(--flame-text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 20px;
+}
+
+.attach-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--flame-text-primary);
+}
+
+.send-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    background: var(--flame-text-primary);
+    color: var(--flame-bg-pure-black);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+}
+
+.send-btn svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+    margin-left: 2px;
+}
+
+.input-box:focus-within .send-btn {
+    background: var(--flame-accent-secondary);
+    color: white;
+    box-shadow: 0 4px 20px var(--flame-accent-glow);
+}
+
+.send-btn:hover {
+    transform: scale(1.08);
+}
+
+.send-btn:active {
+    transform: scale(0.95);
+}
+
+/* Keyboard Hint */
+.keyboard-hint {
+    position: absolute;
+    bottom: 20px;
+    width: 100%;
+    text-align: center;
+    font-size: 11px;
+    color: var(--flame-text-muted);
+    pointer-events: none;
+}
+
+/* ==========================================================================
+   KEYFRAME ANIMATIONS (HARDWARE ACCELERATED)
+   ========================================================================== */
+@keyframes pulseStatus {
+    0% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.4); }
+    70% { box-shadow: 0 0 0 8px rgba(0, 255, 136, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0); }
+}
+
+@keyframes slideUpMessage {
+    0% { opacity: 0; transform: translateY(30px) scale(0.98); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes fadeInWelcome {
+    0% { opacity: 0; transform: scale(0.9); filter: blur(10px); }
+    100% { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+
+@keyframes typingBounce {
+    0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
+    40% { transform: scale(1); opacity: 1; background-color: var(--flame-accent-cyan); }
+}

@@ -1,66 +1,67 @@
 /**
- * FlameAI Ultimate Engine v9.0
- * MAXIMUM CODE EXPANSION - NO COMPRESSION
+ * FlameAI Kernel v11.0 - COLOSSUS EDITION
+ * NO CODE REDUCTION - MAXIMUM EXPANSION
  */
 
-// --- 1. КАНВАС: СЛОЖНАЯ ГЕОМЕТРИЧЕСКАЯ СИСТЕМА ---
+// --- 1. КАНВАС: СИМУЛЯЦИЯ ГЕОМЕТРИЧЕСКИХ ЧАСТИЦ ---
 const canvas = document.getElementById('bg-canvas');
 const ctx = canvas.getContext('2d');
 let triangles = [];
-const config = {
-    count: 65,
-    connectionDist: 170,
-    baseSpeed: 0.4,
-    sizeRange: [5, 22]
-};
+let mouse = { x: null, y: null };
 
 function initCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     triangles = [];
-    for (let i = 0; i < config.count; i++) {
+    
+    // Создаем массив объектов треугольников с уникальными параметрами
+    for (let i = 0; i < 70; i++) {
         triangles.push({
             x: Math.random() * canvas.width,
             y: Math.random() * canvas.height,
-            size: Math.random() * (config.sizeRange[1] - config.sizeRange[0]) + config.sizeRange[0],
+            size: Math.random() * 20 + 6,
             angle: Math.random() * Math.PI * 2,
             rotSpeed: (Math.random() - 0.5) * 0.02,
-            vx: (Math.random() - 0.5) * config.baseSpeed,
-            vy: (Math.random() - 0.5) * config.baseSpeed,
+            vx: (Math.random() - 0.5) * 0.5,
+            vy: (Math.random() - 0.5) * 0.5,
             color: Math.random() > 0.8 ? '#0047ab' : '#ffffff',
-            opacity: Math.random() * 0.2 + 0.1
+            opacity: Math.random() * 0.2 + 0.1,
+            pulse: Math.random() * 0.01
         });
     }
 }
 
-function drawSystem() {
+function drawScene() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Сначала рисуем связи (линии паутины)
+    // Отрисовка динамических связей (Нейронная паутина)
     for (let i = 0; i < triangles.length; i++) {
         for (let j = i + 1; j < triangles.length; j++) {
             const t1 = triangles[i];
             const t2 = triangles[j];
             const dist = Math.hypot(t1.x - t2.x, t1.y - t2.y);
             
-            if (dist < config.connectionDist) {
+            if (dist < 180) {
                 ctx.beginPath();
                 ctx.moveTo(t1.x, t1.y);
                 ctx.lineTo(t2.x, t2.y);
                 ctx.strokeStyle = t1.color;
-                ctx.globalAlpha = (1 - dist / config.connectionDist) * 0.1;
+                ctx.globalAlpha = (1 - dist / 180) * 0.12;
                 ctx.lineWidth = 0.8;
                 ctx.stroke();
             }
         }
     }
 
-    // Затем рисуем сами треугольники
+    // Отрисовка треугольников с вращением
     triangles.forEach(t => {
         t.x += t.vx;
         t.y += t.vy;
         t.angle += t.rotSpeed;
+        t.opacity += t.pulse;
+        if(t.opacity > 0.3 || t.opacity < 0.1) t.pulse *= -1;
 
+        // Отскок от краев (Логика бесконечного пространства)
         if (t.x < -50) t.x = canvas.width + 50;
         if (t.x > canvas.width + 50) t.x = -50;
         if (t.y < -50) t.y = canvas.height + 50;
@@ -77,167 +78,172 @@ function drawSystem() {
         
         ctx.strokeStyle = t.color;
         ctx.globalAlpha = t.opacity;
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 1.8;
         ctx.stroke();
         ctx.restore();
     });
 
-    requestAnimationFrame(drawSystem);
+    requestAnimationFrame(drawScene);
 }
 
 window.addEventListener('resize', initCanvas);
 initCanvas();
-drawSystem();
+drawScene();
 
-// --- 2. ЯДРО УПРАВЛЕНИЯ ПАМЯТЬЮ ---
-let appState = {
-    chats: JSON.parse(localStorage.getItem('flame_v9_db')) || [],
-    activeChatId: localStorage.getItem('flame_v9_active') || null,
-    isTyping: false
-};
+// --- 2. ЛОГИКА МОБИЛЬНОГО МЕНЮ (СЛАЙДЕР) ---
+const sidebar = document.querySelector('.sidebar');
+const overlay = document.createElement('div');
+overlay.className = 'overlay';
+document.body.appendChild(overlay);
 
-const dom = {
-    msgList: document.getElementById('chat-messages'),
-    chatList: document.getElementById('chat-list'),
-    input: document.getElementById('user-input'),
-    sidebar: document.querySelector('.sidebar')
-};
-
-function saveAll() {
-    localStorage.setItem('flame_v9_db', JSON.stringify(appState.chats));
-    localStorage.setItem('flame_v9_active', appState.activeChatId);
-    renderSidebar();
+function toggleSidebar() {
+    sidebar.classList.toggle('active');
+    overlay.classList.toggle('active');
 }
 
-function renderSidebar() {
-    dom.chatList.innerHTML = '';
-    appState.chats.forEach(chat => {
-        const el = document.createElement('div');
-        el.className = `chat-item ${chat.id === appState.activeChatId ? 'active' : ''}`;
-        
-        const titleSpan = document.createElement('span');
-        titleSpan.textContent = chat.title || "Новый диалог";
-        el.appendChild(titleSpan);
+overlay.onclick = toggleSidebar;
 
-        el.onclick = () => {
-            appState.activeChatId = chat.id;
-            saveAll();
-            loadHistory();
-            if (window.innerWidth <= 768) toggleMenu();
+// --- 3. СИСТЕМА УПРАВЛЕНИЯ БАЗОЙ ДАННЫХ ---
+let state = {
+    allChats: JSON.parse(localStorage.getItem('flame_db_v11')) || [],
+    currentId: localStorage.getItem('flame_active_id_v11') || null,
+    isProcessing: false
+};
+
+const elements = {
+    msgBox: document.getElementById('chat-messages'),
+    historyList: document.getElementById('chat-list'),
+    inputArea: document.getElementById('user-input')
+};
+
+function syncData() {
+    localStorage.setItem('flame_db_v11', JSON.stringify(state.allChats));
+    localStorage.setItem('flame_active_id_v11', state.currentId);
+    renderSidebarList();
+}
+
+function renderSidebarList() {
+    elements.historyList.innerHTML = '';
+    state.allChats.forEach(chat => {
+        const item = document.createElement('div');
+        item.className = `chat-item ${chat.id === state.currentId ? 'active' : ''}`;
+        
+        const title = document.createElement('span');
+        title.textContent = chat.title || "Новый диалог";
+        item.appendChild(title);
+
+        item.onclick = () => {
+            state.currentId = chat.id;
+            syncData();
+            loadCurrentMessages();
+            if (window.innerWidth <= 768) toggleSidebar();
         };
-        dom.chatList.appendChild(el);
+        elements.historyList.appendChild(item);
     });
 }
 
-function toggleMenu() {
-    dom.sidebar.classList.toggle('active');
-}
-
-function createNewChat() {
-    const newId = "f_" + Date.now();
-    const newChat = {
-        id: newId,
+function startNewSession() {
+    const uniqueId = "flame_" + Date.now();
+    const chatObj = {
+        id: uniqueId,
         title: "FlameAI Chat",
         messages: [],
-        timestamp: new Date().toISOString()
+        created: new Date().toLocaleDateString()
     };
-    appState.chats.unshift(newChat);
-    appState.activeChatId = newId;
-    saveAll();
-    loadHistory();
+    state.allChats.unshift(chatObj);
+    state.currentId = uniqueId;
+    syncData();
+    loadCurrentMessages();
 }
 
-function loadHistory() {
-    dom.msgList.innerHTML = '';
-    const active = appState.chats.find(c => c.id === appState.activeChatId);
-    if (active) {
-        active.messages.forEach(m => appendMessageUI(m.role, m.text));
-    }
-    scrollToBottom();
-}
-
-function appendMessageUI(role, text) {
-    const msgDiv = document.createElement('div');
-    msgDiv.className = `message ${role === 'user' ? 'user-message' : 'ai-message'}`;
-    msgDiv.textContent = text;
-    dom.msgList.appendChild(msgDiv);
-    scrollToBottom();
-}
-
-function scrollToBottom() {
-    dom.msgList.scrollTo({
-        top: dom.msgList.scrollHeight,
+function addMessageToUI(role, content) {
+    const messageWrapper = document.createElement('div');
+    messageWrapper.className = `message ${role === 'user' ? 'user-message' : 'ai-message'}`;
+    messageWrapper.textContent = content;
+    elements.msgBox.appendChild(messageWrapper);
+    
+    // Плавная прокрутка
+    elements.msgBox.scrollTo({
+        top: elements.msgBox.scrollHeight,
         behavior: 'smooth'
     });
 }
 
-// --- 3. ОБРАБОТЧИК СООБЩЕНИЙ ---
-async function handleSend() {
-    const rawText = dom.input.value.trim();
-    if (!rawText || appState.isTyping) return;
+function loadCurrentMessages() {
+    elements.msgBox.innerHTML = '';
+    const activeChat = state.allChats.find(c => c.id === state.currentId);
+    if (activeChat) {
+        activeChat.messages.forEach(m => addMessageToUI(m.role, m.text));
+    }
+}
 
-    if (!appState.activeChatId) createNewChat();
+// --- 4. ОБРАБОТЧИК AI ЯДРА ---
+async function processMessage() {
+    const text = elements.inputArea.value.trim();
+    if (!text || state.isProcessing) return;
 
-    const currentChat = appState.chats.find(c => c.id === appState.activeChatId);
+    if (!state.currentId) startNewSession();
+
+    const activeIndex = state.allChats.findIndex(c => c.id === state.currentId);
     
-    // Авто-название чата
-    if (currentChat.messages.length === 0) {
-        currentChat.title = rawText.substring(0, 22);
+    // Переименование первого чата
+    if (state.allChats[activeIndex].messages.length === 0) {
+        state.allChats[activeIndex].title = text.substring(0, 20) + (text.length > 20 ? "..." : "");
     }
 
-    // Сохраняем и отображаем юзера
-    currentChat.messages.push({ role: 'user', text: rawText });
-    appendMessageUI('user', rawText);
-    dom.input.value = '';
-    appState.isTyping = true;
-    saveAll();
+    // Юзер
+    state.allChats[activeIndex].messages.push({ role: 'user', text: text });
+    addMessageToUI('user', text);
+    elements.inputArea.value = '';
+    state.isProcessing = true;
+    syncData();
 
-    // Создаем индикатор загрузки
-    const loader = document.createElement('div');
-    loader.className = 'message ai-message';
-    loader.style.opacity = '0.5';
-    loader.textContent = '...';
-    dom.msgList.appendChild(loader);
-    scrollToBottom();
+    // Визуальный индикатор
+    const typing = document.createElement('div');
+    typing.className = 'message ai-message';
+    typing.style.opacity = '0.5';
+    typing.textContent = 'FlameAI печатает...';
+    elements.msgBox.appendChild(typing);
+    elements.msgBox.scrollTop = elements.msgBox.scrollHeight;
 
     try {
         const response = await fetch('/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: rawText })
+            body: JSON.stringify({ message: text })
         });
         
-        const result = await response.json();
-        dom.msgList.removeChild(loader);
+        const data = await response.json();
+        elements.msgBox.removeChild(typing);
 
-        if (result.reply) {
-            currentChat.messages.push({ role: 'assistant', text: result.reply });
-            appendMessageUI('assistant', result.reply);
-            saveAll();
+        if (data.reply) {
+            state.allChats[activeIndex].messages.push({ role: 'assistant', text: data.reply });
+            addMessageToUI('assistant', data.reply);
+            syncData();
         }
     } catch (err) {
-        dom.msgList.removeChild(loader);
-        appendMessageUI('assistant', '⚠️ Проблема с соединением.');
+        elements.msgBox.removeChild(typing);
+        addMessageToUI('assistant', '⚠️ Ошибка синхронизации с ядром FlameAI.');
     } finally {
-        appState.isTyping = false;
+        state.isProcessing = false;
     }
 }
 
-// СОБЫТИЯ
-document.getElementById('send-btn').addEventListener('click', handleSend);
-dom.input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') handleSend();
+// СОБЫТИЯ И ГОРЯЧИЕ КЛАВИШИ
+document.getElementById('send-btn').addEventListener('click', processMessage);
+elements.inputArea.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') processMessage();
 });
-document.getElementById('new-chat-btn').addEventListener('click', createNewChat);
+document.getElementById('new-chat-btn').addEventListener('click', startNewSession);
 
-// ЗАПУСК ПРИ ЗАГРУЗКЕ
-window.onload = () => {
-    if (appState.chats.length > 0) {
-        if (!appState.activeChatId) appState.activeChatId = appState.chats[0].id;
-        loadHistory();
-        renderSidebar();
+// ИНИЦИАЛИЗАЦИЯ ПРИ ЗАПУСКЕ
+window.addEventListener('load', () => {
+    if (state.allChats.length > 0) {
+        if (!state.currentId) state.currentId = state.allChats[0].id;
+        loadCurrentMessages();
+        renderSidebarList();
     } else {
-        createNewChat();
+        startNewSession();
     }
-    console.log("FlameAI Kernel v9.0 Activated");
-};
+    console.log("FlameAI Kernel v11.0: Status Online");
+});

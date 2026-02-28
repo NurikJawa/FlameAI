@@ -1,0 +1,195 @@
+:root {
+    --bg-dark: #020202;
+    --deep-blue: #0a1128;
+    --accent-blue: #1e3a8a;
+    --glass-white: rgba(255, 255, 255, 0.03);
+    --border-light: rgba(255, 255, 255, 0.1);
+    --text-main: #e0e0e0;
+}
+
+body, html {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background-color: var(--bg-dark);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: var(--text-main);
+}
+
+/* Белое свечение по краям */
+body::after {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    box-shadow: inset 0 0 200px rgba(255, 255, 255, 0.05);
+    pointer-events: none;
+    z-index: 5;
+}
+
+#bg-canvas { position: fixed; top: 0; left: 0; z-index: 1; }
+
+/* --- ОБНОВЛЕННЫЙ САЙДБАР (Luxury Glass) --- */
+.sidebar-trigger {
+    position: fixed; top: 0; left: 0;
+    width: 40px; height: 100%; z-index: 1000;
+}
+
+.sidebar {
+    position: fixed; top: 20px; left: 20px;
+    width: 280px; height: calc(100% - 40px);
+    background: rgba(10, 10, 10, 0.6);
+    backdrop-filter: blur(40px) saturate(150%);
+    border: 1px solid var(--border-light);
+    border-radius: 24px;
+    z-index: 999;
+    transform: translateX(-320px);
+    transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sidebar-trigger:hover + .sidebar, .sidebar:hover {
+    transform: translateX(0);
+}
+
+.sidebar-content {
+    padding: 30px 20px;
+    display: flex; flex-direction: column; height: 100%;
+    box-sizing: border-box;
+}
+
+.new-chat-btn {
+    background: #fff; color: #000;
+    border: none; padding: 14px; border-radius: 14px;
+    font-weight: 800; font-size: 0.8rem; letter-spacing: 1px;
+    cursor: pointer; transition: 0.3s; margin-bottom: 30px;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+
+.new-chat-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(255,255,255,0.2); }
+
+.history-label {
+    font-size: 0.65rem; color: rgba(255,255,255,0.3);
+    letter-spacing: 2px; margin-bottom: 20px; font-weight: bold;
+}
+
+.chat-list { flex: 1; overflow-y: auto; padding-right: 5px; }
+.chat-list::-webkit-scrollbar { width: 3px; }
+.chat-list::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 10px; }
+
+.chat-item {
+    padding: 14px; background: var(--glass-white);
+    border-radius: 12px; font-size: 0.8rem; cursor: pointer;
+    margin-bottom: 10px; border: 1px solid transparent;
+    transition: 0.3s; color: rgba(255,255,255,0.6);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.chat-item:hover { background: rgba(255,255,255,0.08); border-color: var(--accent-blue); color: #fff; }
+
+/* --- ОСНОВНОЙ КОНТЕЙНЕР --- */
+.chat-container {
+    position: relative; z-index: 10;
+    width: 90%; max-width: 850px; height: 85vh;
+    margin: 5vh auto; background: rgba(255,255,255,0.01);
+    backdrop-filter: blur(25px); border: 1px solid var(--border-light);
+    border-radius: 32px; display: flex; flex-direction: column;
+    box-shadow: 0 50px 100px rgba(0,0,0,0.6);
+}
+
+.chat-header {
+    padding: 25px; border-bottom: 1px solid var(--border-light);
+    display: flex; justify-content: center;
+}
+
+.status-group {
+    display: flex; align-items: center; gap: 10px;
+    letter-spacing: 3px; font-size: 0.75rem; color: rgba(255,255,255,0.5);
+}
+
+.status-dot {
+    width: 6px; height: 6px; background: #00ff88;
+    border-radius: 50%; box-shadow: 0 0 10px #00ff88;
+}
+
+/* --- ОБНОВЛЕННЫЙ КОНТЕЙНЕР СООБЩЕНИЙ --- */
+/* --- СТИЛЬНЫЙ КАСТОМНЫЙ СКРОЛЛБАР --- */
+#chat-messages {
+    flex: 1;
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    overflow-y: auto;
+    /* Настройка для Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+/* Настройка для Chrome, Edge, Safari */
+#chat-messages::-webkit-scrollbar {
+    width: 6px; /* Очень тонкий, изящный */
+}
+
+#chat-messages::-webkit-scrollbar-track {
+    background: transparent; /* Фон дорожки полностью прозрачный */
+}
+
+#chat-messages::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1); /* Едва заметный рычаг */
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.05); /* Легкий контур */
+    transition: 0.3s;
+}
+
+#chat-messages::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3); /* Подсвечивается при наведении */
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.2); /* Легкое неоновое свечение */
+}
+
+/* Убираем синюю линию: Фикс сообщений */
+.message {
+    max-width: 75%; padding: 18px 24px; border-radius: 22px;
+    font-size: 0.95rem; line-height: 1.6;
+    animation: msgAppear 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes msgAppear { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+.user-message {
+    align-self: flex-end;
+    background: #111827; /* Темный солидный цвет вместо градиента */
+    border: 1px solid #1e3a8a;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+    color: #fff;
+    margin-right: 2px; /* Убираем залипание к краю */
+}
+
+.ai-message {
+    align-self: flex-start;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border-light);
+}
+
+/* --- ИНПУТ --- */
+.input-area { padding: 30px; }
+
+.input-wrapper {
+    display: flex; background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border-light); border-radius: 20px;
+    padding: 6px; padding-left: 20px; transition: 0.3s;
+}
+
+.input-wrapper:focus-within { border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.06); }
+
+input {
+    flex: 1; background: none; border: none; color: #fff;
+    padding: 15px 0; font-size: 1rem; outline: none;
+}
+
+#send-btn {
+    background: #fff; color: #000; border: none;
+    width: 48px; height: 48px; border-radius: 16px;
+    cursor: pointer; transition: 0.3s; display: flex;
+    align-items: center; justify-content: center;
+}
+
+#send-btn:hover { transform: scale(1.05); background: var(--accent-blue); color: #fff; }

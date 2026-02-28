@@ -1,206 +1,97 @@
-/**
- * ============================================================================
- * FlameAI CORE STYLESHEET - VISION & CODE EDITION
- * Version: 14.0 (Monolith PC)
- * Target: Strict Desktop / Widescreen
- * ============================================================================
- * НИКАКОГО АДАПТИВА. Строгая ширина, крупные шрифты (16px+).
- * Интегрирована панель Code Inspector и зона загрузки изображений (Vision).
- */
-
-/* ==========================================================================
-   1. GLOBAL VARIABLES & THEMING
-   ========================================================================== */
-:root {
-    /* Core Backgrounds */
-    --bg-pure-black: #000000;
-    --bg-deep-space: #000511;
-    --bg-sidebar: #050a15;
-    --bg-code-panel: #0d1117;
-    
-    /* Accents & Brand */
-    --accent-primary: #0055ff;
-    --accent-hover: #0077ff;
-    --accent-cyan: #00e5ff;
-    --accent-purple: #8a2be2;
-    --accent-glow: rgba(0, 85, 255, 0.5);
-    
-    /* Typography Colors */
-    --text-main: #ffffff;
-    --text-dim: #a0aec0;
-    --text-muted: #4a5568;
-    
-    /* UI Elements & Glass */
-    --glass-panel: rgba(10, 15, 30, 0.85);
-    --glass-bubble-user: rgba(0, 85, 255, 0.15);
-    --glass-bubble-ai: rgba(255, 255, 255, 0.03);
-    --glass-border: rgba(255, 255, 255, 0.08);
-    --glass-border-focus: rgba(0, 229, 255, 0.4);
-    
-    /* Code Syntax Highlighting (Custom Theme) */
-    --code-bg: #161b22;
-    --code-keyword: #ff7b72;
-    --code-string: #a5d6ff;
-    --code-function: #d2a8ff;
-    --code-variable: #c9d1d9;
-    --code-comment: #8b949e;
-    --code-number: #79c0ff;
-    
-    /* Geometry */
-    --sidebar-width: 380px;
-    --code-panel-width: 45vw; /* Почти половина экрана под код */
-    --font-base: 16px;
-    --font-large: 18px;
-    --radius-sm: 8px;
-    --radius-md: 16px;
-    --radius-lg: 24px;
-}
-
-/* ==========================================================================
-   2. RESET & BASE CONFIGURATION
-   ========================================================================== */
-*, *::before, *::after {
+/* --- ГЛОБАЛЬНЫЙ КЛИНИНГ И БЛОКИРОВКА СИСТЕМНЫХ ПОЛОС --- */
+* {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    /* ПОЛНОЕ УДАЛЕНИЕ БЕЛЫХ ПОЛОС И РАМОК ПРИ НАЖАТИИ */
     outline: none !important;
     border: none;
-    -webkit-font-smoothing: antialiased;
-}
-
-html {
-    font-size: var(--font-base); /* Строго 16px минимум */
-}
-
-body {
-    background-color: var(--bg-pure-black);
-    color: var(--text-main);
-    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
-    display: flex; /* СТРОГАЯ СТАТИКА */
-    position: relative;
+    -webkit-tap-highlight-color: transparent;
     user-select: none;
 }
 
-/* ==========================================================================
-   3. CUSTOM SCROLLBARS
-   ========================================================================== */
-::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-    background-color: var(--bg-deep-space);
+:root {
+    --bg-black: #000000;
+    --bg-blue-deep: #000a1a;
+    --accent-blue: #0047ab;
+    --accent-glow: #007bff;
+    --glass-white: rgba(255, 255, 255, 0.08);
+    --glass-blue: rgba(0, 46, 110, 0.4);
+    --text-pure: #ffffff;
+    --text-dim: #888888;
+    --rich-gradient: linear-gradient(145deg, #000000 0%, #001a4d 50%, #0047ab 100%);
+    --shadow-heavy: 0 15px 50px rgba(0, 0, 0, 0.7);
 }
 
-::-webkit-scrollbar-thumb {
-    background-color: rgba(255, 255, 255, 0.2);
-    border-radius: 10px;
-    border: 2px solid var(--bg-deep-space);
+body {
+    background: linear-gradient(160deg, var(--bg-black) 0%, var(--bg-blue-deep) 100%);
+    background-attachment: fixed;
+    color: var(--text-pure);
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    overflow: hidden;
+    position: relative;
 }
 
-::-webkit-scrollbar-thumb:hover {
-    background-color: var(--accent-primary);
-}
-
-/* ==========================================================================
-   4. BACKGROUND CANVAS (PARTICLE ENGINE)
-   ========================================================================== */
 #bg-canvas {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: 0;
-    pointer-events: none;
-}
-
-/* ==========================================================================
-   5. LAYOUT ARCHITECTURE
-   ========================================================================== */
-#app-container {
-    display: flex;
+    z-index: -1;
     width: 100%;
     height: 100%;
-    z-index: 10;
-    position: relative;
 }
 
-/* ==========================================================================
-   6. SIDEBAR (STATIC MONOLITH 380px)
-   ========================================================================== */
+/* --- САЙДБАР: СТАТИЧНЫЙ ДЛЯ ПК --- */
 .sidebar {
-    width: var(--sidebar-width);
-    min-width: var(--sidebar-width);
-    background: var(--bg-sidebar);
-    border-right: 1px solid var(--glass-border);
+    width: 340px;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(50px);
+    -webkit-backdrop-filter: blur(50px);
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
     display: flex;
     flex-direction: column;
-    padding: 35px 25px;
-    z-index: 100;
-    box-shadow: 15px 0 40px rgba(0, 0, 0, 0.8);
-}
-
-.brand {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    margin-bottom: 40px;
-}
-
-.brand-icon {
-    width: 40px;
-    height: 40px;
-    background: linear-gradient(135deg, var(--accent-primary), var(--accent-cyan));
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 900;
-    font-size: 20px;
-    box-shadow: 0 0 20px var(--accent-glow);
-}
-
-.brand-text {
-    font-size: 24px;
-    font-weight: 800;
-    letter-spacing: 1px;
+    padding: 40px 25px;
+    z-index: 2000;
+    transition: transform 0.6s cubic-bezier(0.19, 1, 0.22, 1);
 }
 
 .new-chat-btn {
-    width: 100%;
-    padding: 22px;
-    background: linear-gradient(135deg, #003399, var(--accent-primary));
+    background: var(--rich-gradient);
     color: white;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: var(--radius-md);
-    font-size: 16px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 2px;
+    padding: 22px;
+    border-radius: 16px;
     cursor: pointer;
-    transition: 0.3s;
-    margin-bottom: 30px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin-bottom: 45px;
+    transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: var(--shadow-heavy);
     display: flex;
-    justify-content: center;
     align-items: center;
-    gap: 10px;
+    justify-content: center;
+    gap: 12px;
 }
 
 .new-chat-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 30px var(--accent-glow);
-    border-color: rgba(255, 255, 255, 0.3);
+    transform: scale(1.02) translateY(-4px);
+    box-shadow: 0 20px 45px rgba(0, 71, 171, 0.5);
+    filter: brightness(1.2);
 }
 
-.history-title {
-    font-size: 12px;
-    color: var(--text-muted);
+.history-label {
+    font-size: 10px;
+    color: #555;
     text-transform: uppercase;
-    letter-spacing: 4px;
-    margin-bottom: 20px;
-    font-weight: 800;
+    letter-spacing: 5px;
+    margin-bottom: 25px;
+    font-weight: 900;
+    padding-left: 10px;
 }
 
 .chat-list {
@@ -208,506 +99,193 @@ body {
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 15px;
+    padding-right: 10px;
 }
 
 .chat-item {
     padding: 18px;
-    background: rgba(255, 255, 255, 0.02);
-    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 14px;
     cursor: pointer;
-    font-size: 16px;
+    font-size: 14px;
     color: var(--text-dim);
-    transition: 0.2s;
+    border: 1px solid transparent;
+    transition: 0.4s;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border: 1px solid transparent;
+    position: relative;
+    overflow: hidden;
 }
 
 .chat-item:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: white;
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    transform: translateX(8px);
 }
 
 .chat-item.active {
-    background: var(--glass-bubble-user);
-    border-color: var(--accent-primary);
-    color: white;
-    font-weight: 600;
+    background: var(--rich-gradient);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
-.delete-chat {
-    color: var(--text-muted);
-    font-size: 18px;
-    transition: 0.2s;
-}
-
-.delete-chat:hover {
-    color: #ff4d4d;
-}
-
-/* ==========================================================================
-   7. MAIN CHAT WORKSPACE
-   ========================================================================== */
-.workspace {
-    flex: 1;
-    display: flex;
-    position: relative;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(10px);
-}
-
-.chat-section {
+/* --- КОНТЕЙНЕР ЧАТА --- */
+.chat-container {
     flex: 1;
     display: flex;
     flex-direction: column;
+    height: 100vh;
     position: relative;
-    transition: width 0.4s ease;
 }
 
 .chat-header {
     height: 90px;
-    padding: 0 40px;
+    padding: 0 45px;
     display: flex;
     align-items: center;
-    background: rgba(0, 0, 0, 0.5);
-    border-bottom: 1px solid var(--glass-border);
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-.header-title {
-    font-size: 20px;
-    font-weight: 700;
-}
-
-.header-status {
-    margin-left: 15px;
-    padding: 6px 12px;
-    background: rgba(0, 229, 255, 0.1);
-    color: var(--accent-cyan);
-    border-radius: 20px;
-    font-size: 14px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.status-dot {
-    width: 8px; height: 8px;
-    background: var(--accent-cyan);
-    border-radius: 50%;
-    box-shadow: 0 0 10px var(--accent-cyan);
-}
-
-/* ==========================================================================
-   8. MESSAGES (STRICT 50% WIDTH, 16px-18px FONT)
-   ========================================================================== */
-#chat-messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 40px 10%;
-    display: flex;
-    flex-direction: column;
-    gap: 30px;
-}
-
-.message-block {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    animation: fadeIn 0.4s ease forwards;
-}
-
-.message-sender {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text-muted);
-    margin-bottom: 8px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-.message-content {
-    max-width: 50%; /* СТРОГОЕ УСЛОВИЕ ИЗ ПРОМПТА */
-    padding: 22px 28px;
-    font-size: 18px; /* КРУПНЫЙ ШРИФТ ИЗ ПРОМПТА */
-    line-height: 1.7;
-    border-radius: var(--radius-lg);
-    position: relative;
-    user-select: text;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-}
-
-.user-block { align-items: flex-end; }
-.user-block .message-sender { margin-right: 10px; }
-.user-block .message-content {
-    background: var(--glass-bubble-user);
-    border: 1px solid rgba(0, 85, 255, 0.3);
-    border-bottom-right-radius: 4px;
-}
-
-.ai-block { align-items: flex-start; }
-.ai-block .message-sender { margin-left: 10px; }
-.ai-block .message-content {
-    background: var(--glass-bubble-ai);
-    border: 1px solid var(--glass-border);
-    border-bottom-left-radius: 4px;
-}
-
-/* Attached Image in Chat */
-.chat-attached-image {
-    max-width: 100%;
-    border-radius: 12px;
-    margin-top: 15px;
-    border: 1px solid var(--glass-border);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-}
-
-/* Copy Text Button inside Bubble */
-.copy-text-btn {
-    position: absolute;
-    bottom: -35px;
-    right: 0;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--glass-border);
-    color: var(--text-dim);
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 12px;
-    cursor: pointer;
-    opacity: 0;
-    transition: 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.message-content:hover .copy-text-btn {
-    opacity: 1;
-    bottom: -40px;
-}
-
-.copy-text-btn:hover {
-    background: var(--accent-primary);
-    color: white;
-}
-
-/* Code Snippet Alert (Inside Bubble) */
-.code-alert {
-    margin-top: 20px;
-    padding: 15px 20px;
-    background: rgba(0, 229, 255, 0.05);
-    border-left: 4px solid var(--accent-cyan);
-    border-radius: 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.code-alert-text {
-    font-size: 16px;
-    color: var(--accent-cyan);
-    font-weight: 600;
-}
-
-.open-code-btn {
-    background: var(--accent-primary);
-    color: white;
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: 0.2s;
-}
-
-.open-code-btn:hover {
-    background: var(--accent-hover);
-    box-shadow: 0 0 15px var(--accent-glow);
-}
-
-/* ==========================================================================
-   9. INPUT ZONE & VISION (IMAGE UPLOAD)
-   ========================================================================== */
-.input-zone {
-    padding: 30px 10% 50px 10%;
-    background: linear-gradient(0deg, var(--bg-pure-black) 20%, transparent);
-}
-
-/* Image Preview Area */
-#image-preview-container {
+/* МОБИЛЬНАЯ СТРЕЛКА/БУРГЕР */
+.menu-toggle {
     display: none;
-    margin-bottom: 15px;
-    gap: 15px;
-    flex-wrap: wrap;
-}
-
-.preview-box {
-    position: relative;
-    width: 120px;
-    height: 120px;
-    border-radius: 12px;
-    border: 2px solid var(--accent-primary);
-    overflow: hidden;
-    box-shadow: 0 10px 20px rgba(0,0,0,0.5);
-    animation: scaleIn 0.3s ease;
-}
-
-.preview-box img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.remove-image-btn {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    width: 24px;
-    height: 24px;
-    background: rgba(0,0,0,0.7);
+    font-size: 30px;
     color: white;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    margin-right: 25px;
     cursor: pointer;
-    font-size: 14px;
-    border: 1px solid rgba(255,255,255,0.2);
-}
-
-.remove-image-btn:hover { background: #ff4d4d; }
-
-/* Main Input Form */
-.input-form {
-    display: flex;
-    align-items: flex-end;
-    background: rgba(15, 20, 35, 0.8);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius-lg);
-    padding: 12px;
-    box-shadow: 0 15px 40px rgba(0,0,0,0.6);
     transition: 0.3s;
 }
 
-.input-form:focus-within {
-    border-color: var(--accent-primary);
-    box-shadow: 0 15px 40px var(--accent-glow);
-}
-
-.vision-upload-btn {
-    width: 50px;
-    height: 50px;
-    border-radius: 16px;
-    background: rgba(255,255,255,0.05);
-    color: var(--text-dim);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: 0.2s;
-    font-size: 24px;
-    margin-right: 15px;
-}
-
-.vision-upload-btn:hover {
-    background: rgba(0, 229, 255, 0.15);
-    color: var(--accent-cyan);
-}
-
-#file-input { display: none; }
-
-#text-input {
+#chat-messages {
     flex: 1;
-    background: transparent;
-    color: white;
-    font-size: 18px; /* КРУПНЫЙ ВВОД */
-    line-height: 1.5;
-    padding: 12px 0;
-    resize: none;
-    max-height: 250px;
-    height: 50px;
-}
-
-#text-input::placeholder { color: var(--text-muted); }
-
-.send-btn {
-    width: 50px;
-    height: 50px;
-    border-radius: 16px;
-    background: var(--accent-primary);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: 0.2s;
-    margin-left: 15px;
-}
-
-.send-btn:hover {
-    background: var(--accent-hover);
-    transform: scale(1.05);
-}
-
-/* ==========================================================================
-   10. CODE INSPECTOR (ISOLATED DEDICATED PANEL)
-   ========================================================================== */
-#code-inspector {
-    position: absolute;
-    right: -100%; /* Hidden by default */
-    top: 0;
-    width: var(--code-panel-width);
-    height: 100vh;
-    background: var(--bg-code-panel);
-    border-left: 1px solid rgba(255,255,255,0.1);
-    z-index: 200;
-    display: flex;
-    flex-direction: column;
-    transition: right 0.5s cubic-bezier(0.19, 1, 0.22, 1);
-    box-shadow: -20px 0 50px rgba(0,0,0,0.8);
-}
-
-#code-inspector.open {
-    right: 0;
-}
-
-.code-inspector-header {
-    height: 90px;
-    padding: 0 30px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: #090d13;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-
-.code-title-area {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.code-icon {
-    font-size: 24px;
-    color: var(--accent-cyan);
-}
-
-.code-title {
-    font-size: 18px;
-    font-weight: 700;
-    letter-spacing: 1px;
-}
-
-.code-actions {
-    display: flex;
-    gap: 15px;
-}
-
-.action-btn {
-    padding: 10px 20px;
-    border-radius: 8px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.btn-copy {
-    background: var(--accent-primary);
-    color: white;
-}
-.btn-copy:hover { background: var(--accent-hover); box-shadow: 0 0 15px var(--accent-glow); }
-
-.btn-close {
-    background: rgba(255,255,255,0.05);
-    color: var(--text-dim);
-    border: 1px solid rgba(255,255,255,0.1);
-}
-.btn-close:hover { background: rgba(255,77,77,0.2); color: #ff4d4d; border-color: #ff4d4d; }
-
-/* Custom Syntax Highlighting Area */
-.code-content-area {
-    flex: 1;
-    padding: 30px;
     overflow-y: auto;
-    background: var(--code-bg);
-}
-
-/* Custom Syntax Highlighter Styles (Built-in) */
-pre.flame-code-block {
-    font-family: 'JetBrains Mono', 'Fira Code', monospace;
-    font-size: 16px; /* КРУПНЫЙ ШРИФТ ДЛЯ КОДА */
-    line-height: 1.6;
-    color: var(--text-main);
-    user-select: text;
-    white-space: pre-wrap;
-    word-break: break-all;
-}
-
-.syntax-keyword { color: var(--code-keyword); font-weight: bold; }
-.syntax-string { color: var(--code-string); }
-.syntax-function { color: var(--code-function); }
-.syntax-variable { color: var(--code-variable); }
-.syntax-comment { color: var(--code-comment); font-style: italic; }
-.syntax-number { color: var(--code-number); }
-
-/* ==========================================================================
-   11. TOAST NOTIFICATIONS
-   ========================================================================== */
-#toast-container {
-    position: fixed;
-    bottom: 40px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 1000;
+    padding: 50px 18%;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 18px; /* КОМПАКТНОСТЬ */
 }
 
-.toast {
-    background: rgba(0, 229, 255, 0.15);
-    border: 1px solid var(--accent-cyan);
+/* --- СООБЩЕНИЯ (АККУРАТНЫЕ И КОМПАКТНЫЕ) --- */
+.message {
+    max-width: 58%;
+    padding: 14px 22px;
+    border-radius: 20px;
+    font-size: 15px;
+    line-height: 1.6;
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    animation: slideUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    position: relative;
+    user-select: text;
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.user-message {
+    align-self: flex-end;
+    background: var(--glass-blue);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-bottom-right-radius: 4px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+.ai-message {
+    align-self: flex-start;
+    background: var(--glass-white);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* --- ЗОНА ВВОДА --- */
+.input-area {
+    padding: 40px 18%;
+    background: linear-gradient(to top, rgba(0,0,0,1) 40%, transparent);
+}
+
+.input-wrapper {
+    max-width: 1100px;
+    margin: 0 auto;
+    position: relative;
+    display: flex;
+}
+
+#user-input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(40px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 24px 90px 24px 35px;
     color: white;
-    padding: 16px 30px;
-    border-radius: 30px;
     font-size: 16px;
-    font-weight: 600;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 10px 30px rgba(0, 229, 255, 0.2);
-    animation: toastSlideUp 0.3s ease forwards;
 }
 
-/* ==========================================================================
-   12. ANIMATIONS
-   ========================================================================== */
-@keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes scaleIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-@keyframes toastSlideUp {
-    0% { opacity: 0; transform: translateY(50px) scale(0.9); }
-    100% { opacity: 1; transform: translateY(0) scale(1); }
-}
-@keyframes typingDot {
-    0%, 100% { transform: translateY(0); opacity: 0.3; }
-    50% { transform: translateY(-5px); opacity: 1; }
+#send-btn {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--rich-gradient);
+    width: 60px;
+    height: 60px;
+    border-radius: 16px;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.4s;
 }
 
-.typing-indicator { display: flex; gap: 6px; padding: 10px 0; }
-.typing-dot {
-    width: 8px; height: 8px; background: var(--accent-cyan); border-radius: 50%;
-    animation: typingDot 1.4s infinite ease-in-out both;
+#send-btn:hover {
+    transform: translateY(-50%) scale(1.1) rotate(-5deg);
+    box-shadow: 0 0 30px var(--accent-glow);
 }
-.typing-dot:nth-child(1) { animation-delay: -0.32s; }
-.typing-dot:nth-child(2) { animation-delay: -0.16s; }
 
-/* Drag & Drop Highlight */
-.input-zone.dragover .input-form {
-    border-color: var(--accent-cyan);
-    background: rgba(0, 229, 255, 0.05);
-    transform: scale(1.02);
+/* --- !!! ГОРЯЧИЙ ФИКС ДЛЯ ТЕЛЕФОНОВ (ONLY MOBILE) !!! --- */
+@media (max-width: 768px) {
+    .menu-toggle { display: block; }
+
+    .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        transform: translateX(-100%); /* СКРЫТ ЗА ЭКРАНОМ */
+        width: 85%;
+        height: 100%;
+        box-shadow: 30px 0 70px rgba(0,0,0,1);
+        z-index: 5000;
+    }
+
+    .sidebar.active {
+        transform: translateX(0); /* ВЫЕЗЖАЕТ ПРИ КЛИКЕ НА СТРЕЛКУ */
+    }
+
+    .overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.7);
+        backdrop-filter: blur(8px);
+        z-index: 4000;
+    }
+
+    .overlay.active { display: block; }
+
+    #chat-messages { padding: 30px 6%; gap: 15px; }
+    .message { max-width: 90%; font-size: 14px; }
+    .input-area { padding: 25px 6%; }
 }
+
+/* СКРОЛЛБАР */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }

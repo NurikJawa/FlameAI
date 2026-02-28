@@ -1,47 +1,34 @@
 /**
  * ============================================================================
  * FlameAI CORE ENGINE - VISION & CODE EDITION
- * Version: 14.0 (Monolith PC)
+ * Version: 14.0.1 (Monolith PC) - FULL RECOVERY
  * ============================================================================
- * ОГРОМНЫЙ ФАЙЛ. Включает:
- * 1. Кастомный парсер кода (без внешних библиотек)
- * 2. Модуль загрузки изображений (Base64 + Drag&Drop)
- * 3. Изоляцию кода в отдельное окно (Code Inspector)
- * 4. Продвинутую симуляцию физики
- * 5. Систему управления кэшем.
+ * ОПИСАНИЕ:
+ * Полная версия системы с физикой, кэшированием и Vision-модулем.
+ * ЛОГИКА АНАЛИЗА КОДА ПЕРЕНЕСЕНА ВНУТРЬ ЧАТА.
  */
 
 "use strict";
 
 // ============================================================================
-// [1] CUSTOM SYNTAX HIGHLIGHTER (Встроенный движок подсветки)
+// [1] CUSTOM SYNTAX HIGHLIGHTER (Движок подсветки внутри чата)
 // ============================================================================
 class FlameSyntaxHighlighter {
     static highlight(code, language = 'javascript') {
-        // Базовая защита от XSS
         let safeCode = code.replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-        // Регулярные выражения для токенизации
         const patterns = [
-            // Комментарии (// или /* */)
             { regex: /(\/\/.*|\/\*[\s\S]*?\*\/)/g, class: 'syntax-comment' },
-            // Строки (' ' или " " или ` `)
             { regex: /(['"`])(?:(?!\1)[^\\]|\\.)*\1/g, class: 'syntax-string' },
-            // Ключевые слова (JS/TS/Python/C++)
             { regex: /\b(const|let|var|function|class|return|if|else|for|while|import|export|from|async|await|try|catch|def|public|private)\b/g, class: 'syntax-keyword' },
-            // Функции (вызовы)
             { regex: /\b([a-zA-Z_$][a-zA-Z0-9_$]*)\s*(?=\()/g, class: 'syntax-function' },
-            // Числа
             { regex: /\b(\d+(?:\.\d+)?)\b/g, class: 'syntax-number' },
-            // Встроенные объекты и переменные
             { regex: /\b(window|document|console|this|true|false|null|undefined)\b/g, class: 'syntax-variable' }
         ];
 
-        // Временные токены для предотвращения конфликтов замен
         const tokens = [];
         let tokenIndex = 0;
 
-        // Извлекаем строки и комментарии первыми, чтобы не ломать логику внутри них
         patterns.slice(0, 2).forEach(pattern => {
             safeCode = safeCode.replace(pattern.regex, (match) => {
                 const token = `__FLAME_TOKEN_${tokenIndex++}__`;
@@ -50,12 +37,10 @@ class FlameSyntaxHighlighter {
             });
         });
 
-        // Применяем остальные правила
         patterns.slice(2).forEach(pattern => {
             safeCode = safeCode.replace(pattern.regex, `<span class="${pattern.class}">$1</span>`);
         });
 
-        // Возвращаем строки и комментарии
         tokens.forEach(({ token, match, class: className }) => {
             safeCode = safeCode.replace(token, `<span class="${className}">${match}</span>`);
         });
@@ -65,51 +50,37 @@ class FlameSyntaxHighlighter {
 }
 
 // ============================================================================
-// [2] MARKDOWN & CODE PARSER (Разделение текста и кода)
+// [2] MARKDOWN & CODE PARSER (Теперь без вырезания в "Code Inspector")
 // ============================================================================
 class FlameParser {
-    /**
-     * Разбирает ответ ИИ. Извлекает блоки ```code```.
-     * Возвращает объект с чистым текстом и массивом извлеченного кода.
-     */
     static parseResponse(rawText) {
-        const codeBlocks = [];
-        // Ищем блоки вида ```lang ... ```
+        // Регулярка для поиска блоков кода
         const regex = /```(\w+)?\n([\s\S]*?)```/g;
-        
-        let match;
         let cleanText = rawText;
 
-        while ((match = regex.exec(rawText)) !== null) {
-            const language = match[1] || 'text';
-            const codeContent = match[2];
-            const blockId = 'code_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-            
-            codeBlocks.push({
-                id: blockId,
-                language: language,
-                code: codeContent.trim()
-            });
-
-            // Заменяем код в оригинальном тексте на специальный HTML-плейсхолдер
-            const placeholder = `
-                <div class="code-alert">
-                    <div class="code-alert-text">📦 Обнаружен фрагмент кода (${language})</div>
-                    <button class="open-code-btn" data-code-id="${blockId}">Посмотреть код</button>
+        // Вместо создания кнопок "Посмотреть код", мы рендерим его сразу красиво
+        cleanText = cleanText.replace(regex, (match, lang, code) => {
+            const language = lang || 'javascript';
+            const highlighted = FlameSyntaxHighlighter.highlight(code.trim(), language);
+            return `
+                <div class="inline-code-container">
+                    <div class="inline-code-header">
+                        <span>${language.toUpperCase()}</span>
+                    </div>
+                    <pre class="flame-code-block"><code>${highlighted}</code></pre>
                 </div>
             `;
-            cleanText = cleanText.replace(match[0], placeholder);
-        }
+        });
 
-        // Заменяем переносы строк на <br> для обычного текста
+        // Форматируем переносы строк для обычного текста
         cleanText = cleanText.replace(/\n/g, '<br>');
 
-        return { text: cleanText, blocks: codeBlocks };
+        return { text: cleanText };
     }
 }
 
 // ============================================================================
-// [3] VISION & UPLOAD MODULE (Анализ Изображений)
+// [3] VISION & UPLOAD MODULE (Модуль загрузки изображений)
 // ============================================================================
 class VisionModule {
     constructor(uiManager) {
@@ -127,19 +98,14 @@ class VisionModule {
     }
 
     bindEvents() {
-        // Клик по кнопке скрепки
-        this.elements.uploadBtn.addEventListener('click', () => {
-            this.elements.fileInput.click();
-        });
+        if (this.elements.uploadBtn) {
+            this.elements.uploadBtn.addEventListener('click', () => this.elements.fileInput.click());
+        }
 
-        // Выбор файла через окно
         this.elements.fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                this.processFile(e.target.files[0]);
-            }
+            if (e.target.files.length > 0) this.processFile(e.target.files[0]);
         });
 
-        // Drag & Drop
         this.elements.inputZone.addEventListener('dragover', (e) => {
             e.preventDefault();
             this.elements.inputZone.classList.add('dragover');
@@ -152,15 +118,13 @@ class VisionModule {
         this.elements.inputZone.addEventListener('drop', (e) => {
             e.preventDefault();
             this.elements.inputZone.classList.remove('dragover');
-            if (e.dataTransfer.files.length > 0) {
-                this.processFile(e.dataTransfer.files[0]);
-            }
+            if (e.dataTransfer.files.length > 0) this.processFile(e.dataTransfer.files[0]);
         });
     }
 
     processFile(file) {
         if (!file.type.startsWith('image/')) {
-            this.ui.showToast('Ошибка: Только изображения разрешены для Vision анализа.');
+            this.ui.showToast('Ошибка: Разрешены только изображения');
             return;
         }
 
@@ -180,10 +144,7 @@ class VisionModule {
             </div>
         `;
         this.elements.previewContainer.style.display = 'flex';
-        
-        document.getElementById('remove-img').addEventListener('click', () => {
-            this.clear();
-        });
+        document.getElementById('remove-img').addEventListener('click', () => this.clear());
     }
 
     clear() {
@@ -193,30 +154,24 @@ class VisionModule {
         this.elements.fileInput.value = '';
     }
 
-    hasImage() {
-        return this.currentImageBase64 !== null;
-    }
-
-    getImageData() {
-        return this.currentImageBase64;
-    }
+    hasImage() { return this.currentImageBase64 !== null; }
+    getImageData() { return this.currentImageBase64; }
 }
 
 // ============================================================================
-// [4] BACKGROUND PARTICLE ENGINE (Продвинутая Физика)
+// [4] BACKGROUND PARTICLE ENGINE (Тяжелая физика фона)
 // ============================================================================
 class PhysicsEngine {
     constructor() {
         this.canvas = document.getElementById('bg-canvas');
+        if (!this.canvas) return;
         this.ctx = this.canvas.getContext('2d', { alpha: false });
         this.particles = [];
         this.width = window.innerWidth;
         this.height = window.innerHeight;
         this.canvas.width = this.width;
         this.canvas.height = this.height;
-        
-        // Настройки для тяжелого ПК
-        this.count = 120;
+        this.count = 150; 
         
         this.init();
         window.addEventListener('resize', () => this.resize());
@@ -229,10 +184,10 @@ class PhysicsEngine {
             this.particles.push({
                 x: Math.random() * this.width,
                 y: Math.random() * this.height,
-                vx: (Math.random() - 0.5) * 1.5,
-                vy: (Math.random() - 0.5) * 1.5,
-                size: Math.random() * 3 + 1,
-                color: Math.random() > 0.8 ? '#00e5ff' : '#0055ff'
+                vx: (Math.random() - 0.5) * 1.2,
+                vy: (Math.random() - 0.5) * 1.2,
+                size: Math.random() * 2.5 + 1,
+                color: Math.random() > 0.85 ? '#00e5ff' : '#0055ff'
             });
         }
     }
@@ -242,15 +197,15 @@ class PhysicsEngine {
         this.height = window.innerHeight;
         this.canvas.width = this.width;
         this.canvas.height = this.height;
+        this.init();
     }
 
     animate() {
-        this.ctx.fillStyle = '#000511'; // Deep space
+        this.ctx.fillStyle = '#000511';
         this.ctx.fillRect(0, 0, this.width, this.height);
 
         for (let i = 0; i < this.count; i++) {
             let p = this.particles[i];
-            
             p.x += p.vx;
             p.y += p.vy;
 
@@ -262,16 +217,15 @@ class PhysicsEngine {
             this.ctx.fillStyle = p.color;
             this.ctx.fill();
 
-            // Линии
             for (let j = i + 1; j < this.count; j++) {
                 let p2 = this.particles[j];
                 let dist = Math.hypot(p.x - p2.x, p.y - p2.y);
-                if (dist < 150) {
+                if (dist < 140) {
                     this.ctx.beginPath();
                     this.ctx.moveTo(p.x, p.y);
                     this.ctx.lineTo(p2.x, p2.y);
-                    this.ctx.strokeStyle = `rgba(0, 85, 255, ${1 - dist / 150})`;
-                    this.ctx.lineWidth = 0.5;
+                    this.ctx.strokeStyle = `rgba(0, 85, 255, ${1 - dist / 140})`;
+                    this.ctx.lineWidth = 0.6;
                     this.ctx.stroke();
                 }
             }
@@ -281,7 +235,7 @@ class PhysicsEngine {
 }
 
 // ============================================================================
-// [5] STORAGE MANAGER (Кэширование с поддержкой картинок)
+// [5] STORAGE MANAGER (Система сохранения истории)
 // ============================================================================
 class DBManager {
     constructor() {
@@ -292,23 +246,23 @@ class DBManager {
 
     load() {
         try {
-            return JSON.parse(localStorage.getItem(this.key)) || [];
-        } catch { return []; }
+            const stored = localStorage.getItem(this.key);
+            return stored ? JSON.parse(stored) : [];
+        } catch (e) { return []; }
     }
 
     save() {
         try {
             localStorage.setItem(this.key, JSON.stringify(this.data));
         } catch (e) {
-            console.error("Storage Full! Base64 images taking too much space.");
+            console.warn("Storage Full - Clearing old sessions");
+            if (this.data.length > 5) this.data.pop();
         }
     }
 
     getActiveId() { return localStorage.getItem(this.activeKey); }
     setActiveId(id) { localStorage.setItem(this.activeKey, id); }
-
     getAll() { return this.data; }
-    
     getChat(id) { return this.data.find(c => c.id === id); }
     
     addChat(chat) {
@@ -331,13 +285,12 @@ class DBManager {
 }
 
 // ============================================================================
-// [6] UI CONTROLLER & APP CORE
+// [6] UI CONTROLLER & APP CORE (Главный мозг FlameAI)
 // ============================================================================
 class FlameApp {
     constructor() {
         this.db = new DBManager();
         this.vision = new VisionModule(this);
-        this.codeBlocksMap = new Map(); // Хранит сгенерированный код
         this.isProcessing = false;
 
         this.dom = {
@@ -346,26 +299,22 @@ class FlameApp {
             input: document.getElementById('text-input'),
             sendBtn: document.getElementById('send-btn'),
             newBtn: document.getElementById('new-chat-btn'),
-            
-            // Code Inspector Elements
-            codePanel: document.getElementById('code-inspector'),
-            codeTitle: document.getElementById('ci-title'),
-            codePre: document.getElementById('ci-pre'),
-            closeCodeBtn: document.getElementById('ci-close'),
-            copyCodeBtn: document.getElementById('ci-copy')
+            appContainer: document.getElementById('app-container')
         };
 
         this.init();
     }
 
     init() {
+        console.log("🔥 FlameAI Engine Initializing...");
         new PhysicsEngine();
         this.bindEvents();
         
         const active = this.db.getActiveId();
         if (!active || !this.db.getChat(active)) {
-            if (this.db.getAll().length > 0) {
-                this.db.setActiveId(this.db.getAll()[0].id);
+            const all = this.db.getAll();
+            if (all.length > 0) {
+                this.db.setActiveId(all[0].id);
             } else {
                 this.createNewSession();
             }
@@ -376,26 +325,14 @@ class FlameApp {
     }
 
     bindEvents() {
-        this.dom.newBtn.addEventListener('click', () => this.createNewSession());
-        this.dom.sendBtn.addEventListener('click', () => this.handleSend());
-        this.dom.input.addEventListener('keydown', (e) => {
+        this.dom.newBtn.onclick = () => this.createNewSession();
+        this.dom.sendBtn.onclick = () => this.handleSend();
+        this.dom.input.onkeydown = (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 this.handleSend();
             }
-        });
-
-        // Code Inspector Events
-        this.dom.closeCodeBtn.addEventListener('click', () => {
-            this.dom.codePanel.classList.remove('open');
-        });
-        
-        this.dom.copyCodeBtn.addEventListener('click', () => {
-            const code = this.dom.codePre.innerText;
-            navigator.clipboard.writeText(code).then(() => {
-                this.showToast("Код скопирован в буфер обмена!");
-            });
-        });
+        };
     }
 
     createNewSession() {
@@ -405,7 +342,6 @@ class FlameApp {
         this.vision.clear();
         this.renderSidebar();
         this.renderChat();
-        this.dom.codePanel.classList.remove('open');
     }
 
     renderSidebar() {
@@ -417,60 +353,42 @@ class FlameApp {
             item.className = `chat-item ${chat.id === activeId ? 'active' : ''}`;
             
             const title = document.createElement('span');
-            title.textContent = chat.title || "Анализ файлов";
+            title.textContent = chat.title || "Без названия";
             
             const delBtn = document.createElement('div');
             delBtn.className = 'delete-chat';
             delBtn.innerHTML = '✕';
             delBtn.onclick = (e) => {
                 e.stopPropagation();
-                if(confirm("Удалить этот лог навсегда?")) {
-                    this.db.deleteChat(chat.id);
-                    const remaining = this.db.getAll();
-                    if (remaining.length > 0) {
-                        this.db.setActiveId(remaining[0].id);
-                    } else {
-                        this.createNewSession();
-                    }
-                    this.renderSidebar();
-                    this.renderChat();
-                    this.dom.codePanel.classList.remove('open');
-                }
+                this.db.deleteChat(chat.id);
+                const rem = this.db.getAll();
+                if (rem.length > 0) this.db.setActiveId(rem[0].id);
+                else this.createNewSession();
+                this.renderSidebar();
+                this.renderChat();
             };
             
             item.appendChild(title);
             item.appendChild(delBtn);
-            
             item.onclick = () => {
                 if (chat.id === activeId) return;
                 this.db.setActiveId(chat.id);
                 this.renderSidebar();
                 this.renderChat();
-                this.dom.codePanel.classList.remove('open');
             };
-            
             this.dom.sidebar.appendChild(item);
         });
     }
 
     renderChat() {
         this.dom.chatArea.innerHTML = '';
-        this.codeBlocksMap.clear(); // Сброс карты кода
-        
         const activeId = this.db.getActiveId();
         const chat = this.db.getChat(activeId);
-        if (!chat) return;
-
-        chat.messages.forEach(msg => {
-            this.appendMessage(msg.role, msg.text, msg.image);
-            
-            // Если ИИ, парсим код заново для карты
-            if (msg.role === 'assistant') {
-                const parsed = FlameParser.parseResponse(msg.text);
-                parsed.blocks.forEach(b => this.codeBlocksMap.set(b.id, b));
-            }
-        });
-        
+        if (chat) {
+            chat.messages.forEach(msg => {
+                this.appendMessage(msg.role, msg.text, msg.image);
+            });
+        }
         this.scrollToBottom();
     }
 
@@ -480,7 +398,7 @@ class FlameApp {
 
         const sender = document.createElement('div');
         sender.className = 'message-sender';
-        sender.textContent = role === 'user' ? 'Flame Console' : 'FlameAI Vision Core';
+        sender.textContent = role === 'user' ? 'System Console' : 'FlameAI Vision';
         wrapper.appendChild(sender);
 
         const content = document.createElement('div');
@@ -490,71 +408,31 @@ class FlameApp {
             content.innerHTML = `<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
             wrapper.id = 'flame-typing';
         } else {
-            // Если текст от ИИ, парсим его
-            if (role === 'assistant') {
-                const parsed = FlameParser.parseResponse(text);
-                content.innerHTML = parsed.text;
-                
-                // Добавляем обработчики кнопок открытия кода
-                setTimeout(() => {
-                    const btns = content.querySelectorAll('.open-code-btn');
-                    btns.forEach(btn => {
-                        btn.addEventListener('click', () => {
-                            const codeId = btn.getAttribute('data-code-id');
-                            this.openCodeInspector(codeId);
-                        });
-                    });
-                }, 100);
+            const parsed = FlameParser.parseResponse(text);
+            content.innerHTML = parsed.text;
 
-            } else {
-                content.innerHTML = text.replace(/\n/g, '<br>');
-            }
-
-            // Изображение пользователя
             if (imageSrc) {
                 const img = document.createElement('img');
                 img.className = 'chat-attached-image';
                 img.src = imageSrc;
+                img.style.maxWidth = '100%';
+                img.style.borderRadius = '10px';
+                img.style.marginTop = '10px';
                 content.appendChild(img);
             }
-
-            // Кнопка копирования текста сообщения
-            const copyBtn = document.createElement('div');
-            copyBtn.className = 'copy-text-btn';
-            copyBtn.innerHTML = `<span>📋</span> Copy Text`;
-            copyBtn.onclick = () => {
-                const cleanText = text.replace(/```[\s\S]*?```/g, '[Смотреть код во вкладке]'); // Удаляем сырой код из текста
-                navigator.clipboard.writeText(cleanText).then(() => this.showToast('Текст скопирован!'));
-            };
-            content.appendChild(copyBtn);
         }
 
         wrapper.appendChild(content);
         this.dom.chatArea.appendChild(wrapper);
     }
 
-    openCodeInspector(codeId) {
-        const block = this.codeBlocksMap.get(codeId);
-        if (!block) return;
-
-        this.dom.codeTitle.textContent = `${block.language.toUpperCase()} Script`;
-        
-        // Применяем кастомную подсветку синтаксиса
-        const highlighted = FlameSyntaxHighlighter.highlight(block.code, block.language);
-        this.dom.codePre.innerHTML = highlighted;
-
-        // Открываем панель с правой стороны
-        this.dom.codePanel.classList.add('open');
-    }
-
     async handleSend() {
         if (this.isProcessing) return;
         
         const rawText = this.dom.input.value.trim();
-        const hasImg = this.vision.hasImage();
         const imgSrc = this.vision.getImageData();
         
-        if (!rawText && !hasImg) return;
+        if (!rawText && !imgSrc) return;
 
         this.isProcessing = true;
         this.dom.input.value = '';
@@ -563,9 +441,9 @@ class FlameApp {
         const activeId = this.db.getActiveId();
         const chat = this.db.getChat(activeId);
 
-        // Обновляем название чата
-        if (chat.messages.length === 0) {
-            chat.title = rawText ? rawText.substring(0, 20) : "Анализ изображения";
+        // Обновляем заголовок чата по первому сообщению
+        if (chat.messages.length === 0 && rawText) {
+            chat.title = rawText.substring(0, 25);
             this.db.updateChat(activeId, { title: chat.title });
             this.renderSidebar();
         }
@@ -573,61 +451,39 @@ class FlameApp {
         chat.messages.push({ role: 'user', text: rawText, image: imgSrc });
         this.db.updateChat(activeId, { messages: chat.messages });
         this.appendMessage('user', rawText, imgSrc);
-        this.scrollToBottom();
-
+        
         this.appendMessage('assistant', '', null, true);
         this.scrollToBottom();
 
-        // Симуляция отправки на Vision сервер
         try {
-            const bodyData = { message: rawText };
-            if (imgSrc) bodyData.image = imgSrc;
-
             const res = await fetch('/api/vision', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(bodyData)
+                body: JSON.stringify({ message: rawText, image: imgSrc })
             });
 
             const data = await res.json();
-            const reply = data.reply || this.generateMockResponse(); // Фейковый ответ с кодом для тестов
+            const reply = data.reply || "FlameAI Core: Ответ получен, но он пуст.";
 
-            document.getElementById('flame-typing').remove();
-
-            // Парсим ответ и сохраняем блоки в память для текущей сессии
-            const parsedInfo = FlameParser.parseResponse(reply);
-            parsedInfo.blocks.forEach(b => this.codeBlocksMap.set(b.id, b));
+            if (document.getElementById('flame-typing')) document.getElementById('flame-typing').remove();
 
             chat.messages.push({ role: 'assistant', text: reply });
             this.db.updateChat(activeId, { messages: chat.messages });
             this.appendMessage('assistant', reply);
-            this.scrollToBottom();
 
         } catch (e) {
-            document.getElementById('flame-typing').remove();
-            
-            // Если сервера нет, кидаем фейковый ответ, чтобы ты мог увидеть разделение окон
-            console.warn("API Offline. Using localized test script generation.");
-            const fakeReply = this.generateMockResponse();
-            
-            const parsedInfo = FlameParser.parseResponse(fakeReply);
-            parsedInfo.blocks.forEach(b => this.codeBlocksMap.set(b.id, b));
-
-            chat.messages.push({ role: 'assistant', text: fakeReply });
-            this.db.updateChat(activeId, { messages: chat.messages });
-            this.appendMessage('assistant', fakeReply);
-            this.scrollToBottom();
+            if (document.getElementById('flame-typing')) document.getElementById('flame-typing').remove();
+            const errReply = "Критическая ошибка: Vision API не отвечает. Проверьте серверную часть.";
+            this.appendMessage('assistant', errReply);
         } finally {
             this.isProcessing = false;
+            this.scrollToBottom();
         }
     }
 
     scrollToBottom() {
         requestAnimationFrame(() => {
-            this.dom.chatArea.scrollTo({
-                top: this.dom.chatArea.scrollHeight,
-                behavior: 'smooth'
-            });
+            this.dom.chatArea.scrollTop = this.dom.chatArea.scrollHeight;
         });
     }
 
@@ -638,28 +494,19 @@ class FlameApp {
             container.id = 'toast-container';
             document.body.appendChild(container);
         }
-
         const toast = document.createElement('div');
         toast.className = 'toast';
         toast.textContent = msg;
         container.appendChild(toast);
-
         setTimeout(() => {
             toast.style.opacity = '0';
-            toast.style.transition = '0.3s';
             setTimeout(() => toast.remove(), 300);
         }, 3000);
     }
-
-    generateMockResponse() {
-        return `Я проанализировал ваш запрос и изображение макета.\nСтруктура требует создания отдельного класса для обработки рендера. Вот готовая реализация:\n\n\`\`\`javascript\nclass RenderEngine {\n    constructor(canvasId) {\n        this.canvas = document.getElementById(canvasId);\n        this.ctx = this.canvas.getContext('2d');\n        console.log("Renderer ready");\n    }\n\n    drawObject(x, y, color) {\n        this.ctx.fillStyle = color;\n        this.ctx.fillRect(x, y, 100, 100);\n    }\n}\n\`\`\`\n\nТакже, для стилизации кнопок, добавьте следующий CSS в главный файл:\n\n\`\`\`css\n.btn-render {\n    background: #007bff;\n    color: white;\n    padding: 15px 30px;\n    border-radius: 8px;\n    box-shadow: 0 10px 20px rgba(0, 123, 255, 0.4);\n}\n\`\`\`\n\nНажмите на кнопку просмотра кода в чате, чтобы открыть его в безопасной изолированной вкладке Code Inspector. Там вы сможете скопировать его в один клик.`;
-    }
 }
 
-// ============================================================================
-// [7] BOOTSTRAP
-// ============================================================================
+// Загрузка системы
 window.addEventListener('load', () => {
     window.flameCore = new FlameApp();
-    console.log("🔥 FlameAI Vision & Code Edition | System Online | Memory Allocated");
+    console.log("🔥 FlameAI Monolith | System Online | Memory Allocated");
 });

@@ -1,4 +1,4 @@
-// --- ГЕОМЕТРИЧЕСКИЙ ФОН (ТРЕУГОЛЬНИКИ) ---
+// --- ТРЕУГОЛЬНИКИ (СИНИЕ И БЕЛЫЕ) ---
 const canvas = document.getElementById('bg-canvas');
 const ctx = canvas.getContext('2d');
 let triangles = [];
@@ -7,15 +7,16 @@ function initCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     triangles = [];
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 35; i++) {
         triangles.push({
             x: Math.random() * canvas.width,
             y: Math.random() * canvas.height,
-            size: Math.random() * 15 + 5,
+            size: Math.random() * 12 + 4,
             angle: Math.random() * Math.PI * 2,
-            rotSpeed: (Math.random() - 0.5) * 0.02,
-            vx: (Math.random() - 0.5) * 0.4,
-            vy: (Math.random() - 0.5) * 0.4
+            rot: (Math.random() - 0.5) * 0.01,
+            vx: (Math.random() - 0.5) * 0.3,
+            vy: (Math.random() - 0.5) * 0.3,
+            color: Math.random() > 0.5 ? 'rgba(0, 71, 171, 0.15)' : 'rgba(255, 255, 255, 0.05)'
         });
     }
 }
@@ -29,8 +30,7 @@ function drawTriangle(t) {
     ctx.lineTo(t.size, t.size);
     ctx.lineTo(-t.size, t.size);
     ctx.closePath();
-    ctx.strokeStyle = 'rgba(255, 77, 77, 0.15)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = t.color;
     ctx.stroke();
     ctx.restore();
 }
@@ -38,9 +38,7 @@ function drawTriangle(t) {
 function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     triangles.forEach(t => {
-        t.x += t.vx;
-        t.y += t.vy;
-        t.angle += t.rotSpeed;
+        t.x += t.vx; t.y += t.vy; t.angle += t.rot;
         if (t.x < -20) t.x = canvas.width + 20;
         if (t.x > canvas.width + 20) t.x = -20;
         if (t.y < -20) t.y = canvas.height + 20;
@@ -49,79 +47,92 @@ function animate() {
     });
     requestAnimationFrame(animate);
 }
+initCanvas(); animate();
 
-window.addEventListener('resize', initCanvas);
-initCanvas();
-animate();
+// --- СИСТЕМА ПАМЯТИ МНОЖЕСТВА ЧАТОВ ---
+let allChats = JSON.parse(localStorage.getItem('flame_all_chats')) || [];
+let currentChatId = localStorage.getItem('flame_current_id') || null;
 
-// --- СИСТЕМА ПАМЯТИ (LOCALSTORAGE) ---
-let chatHistory = JSON.parse(localStorage.getItem('flame_history')) || [];
-
-function saveHistory() {
-    localStorage.setItem('flame_history', JSON.stringify(chatHistory));
-}
-
-// --- ЛОГИКА ЧАТА ---
 const chatMessages = document.getElementById('chat-messages');
-const userInput = document.getElementById('user-input');
-const sendBtn = document.getElementById('send-btn');
-const sidebar = document.getElementById('sidebar');
-const menuToggle = document.getElementById('menu-toggle');
 const chatList = document.getElementById('chat-list');
+const userInput = document.getElementById('user-input');
 
-function addMessage(role, text, save = true) {
-    const msgDiv = document.createElement('div');
-    msgDiv.style.padding = '15px 20px';
-    msgDiv.style.borderRadius = '15px';
-    msgDiv.style.marginBottom = '20px';
-    msgDiv.style.maxWidth = '85%';
-    msgDiv.style.fontSize = '15px';
-    msgDiv.style.lineHeight = '1.6';
-    msgDiv.style.animation = 'fadeIn 0.4s ease forwards';
-    
-    if (role === 'user') {
-        msgDiv.style.background = 'rgba(45, 45, 45, 0.8)';
-        msgDiv.style.alignSelf = 'flex-end';
-        msgDiv.style.color = '#fff';
-    } else {
-        msgDiv.style.background = 'rgba(255, 77, 77, 0.05)';
-        msgDiv.style.border = '1px solid rgba(255, 77, 77, 0.2)';
-        msgDiv.style.alignSelf = 'flex-start';
-        msgDiv.style.color = '#e0e0e0';
-    }
+// Сохранение в память
+function saveToLocal() {
+    localStorage.setItem('flame_all_chats', JSON.stringify(allChats));
+    localStorage.setItem('flame_current_id', currentChatId);
+    renderChatList();
+}
 
-    msgDiv.textContent = text;
-    chatMessages.appendChild(msgDiv);
+// Отрисовка сообщения
+function displayMessage(role, text) {
+    const div = document.createElement('div');
+    div.className = `message ${role === 'user' ? 'user-message' : 'ai-message'}`;
+    div.textContent = text;
+    chatMessages.appendChild(div);
     chatMessages.scrollTop = chatMessages.scrollHeight;
-
-    if (save) {
-        chatHistory.push({ role, text });
-        saveHistory();
-    }
 }
 
-// Загрузка истории при старте
-function loadHistory() {
+// Отрисовка списка чатов слева
+function renderChatList() {
+    chatList.innerHTML = '';
+    allChats.forEach(chat => {
+        const item = document.createElement('div');
+        item.className = `chat-item ${chat.id === currentChatId ? 'active' : ''}`;
+        item.textContent = chat.title || "Новый диалог";
+        item.onclick = () => switchChat(chat.id);
+        chatList.appendChild(item);
+    });
+}
+
+// Создание нового чата
+function createNewChat() {
+    const newId = Date.now().toString();
+    const newChat = { id: newId, title: "Новый диалог", messages: [] };
+    allChats.unshift(newChat);
+    currentChatId = newId;
+    saveToLocal();
+    loadCurrentChat();
+}
+
+// Переключение чата
+function switchChat(id) {
+    currentChatId = id;
+    saveToLocal();
+    loadCurrentChat();
+    document.getElementById('sidebar').classList.remove('active');
+}
+
+// Загрузка сообщений текущего чата
+function loadCurrentChat() {
     chatMessages.innerHTML = '';
-    if (chatHistory.length === 0) {
-        addMessage('assistant', 'FlameAI готов. Память чиста.', false);
-    } else {
-        chatHistory.forEach(msg => addMessage(msg.role, msg.text, false));
+    const chat = allChats.find(c => c.id === currentChatId);
+    if (chat) {
+        chat.messages.forEach(m => displayMessage(m.role, m.text));
     }
 }
 
-async function handleSendMessage() {
+// Отправка сообщения
+async function handleSend() {
     const text = userInput.value.trim();
     if (!text) return;
 
-    addMessage('user', text);
-    userInput.value = '';
+    if (!currentChatId) createNewChat();
 
-    const typingMsg = document.createElement('div');
-    typingMsg.textContent = 'Печатает...';
-    typingMsg.style.color = '#666';
-    typingMsg.style.marginLeft = '20px';
-    chatMessages.appendChild(typingMsg);
+    // Находим текущий чат
+    const chatIndex = allChats.findIndex(c => c.id === currentChatId);
+    
+    // Добавляем сообщение пользователя
+    allChats[chatIndex].messages.push({ role: 'user', text: text });
+    
+    // Если это первое сообщение, меняем заголовок чата
+    if (allChats[chatIndex].messages.length === 1) {
+        allChats[chatIndex].title = text.substring(0, 20) + "...";
+    }
+
+    displayMessage('user', text);
+    userInput.value = '';
+    saveToLocal();
 
     try {
         const response = await fetch('/chat', {
@@ -129,41 +140,33 @@ async function handleSendMessage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message: text })
         });
-
         const data = await response.json();
-        chatMessages.removeChild(typingMsg);
-
+        
         if (data.reply) {
-            addMessage('assistant', data.reply);
+            allChats[chatIndex].messages.push({ role: 'assistant', text: data.reply });
+            displayMessage('assistant', data.reply);
+            saveToLocal();
         }
-    } catch (error) {
-        chatMessages.removeChild(typingMsg);
-        addMessage('assistant', 'Ошибка связи с сервером.');
+    } catch (err) {
+        displayMessage('assistant', 'Ошибка связи с сервером.');
     }
 }
 
-// Кнопки и события
-sendBtn.addEventListener('click', handleSendMessage);
-userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSendMessage(); });
+// События
+document.getElementById('send-btn').onclick = handleSend;
+userInput.onkeypress = (e) => { if (e.key === 'Enter') handleSend(); };
+document.getElementById('new-chat-btn').onclick = createNewChat;
+document.getElementById('menu-toggle').onclick = () => {
+    document.getElementById('sidebar').classList.toggle('active');
+};
 
-menuToggle.addEventListener('click', (e) => {
-    e.stopPropagation();
-    sidebar.classList.toggle('active');
-});
-
-document.addEventListener('click', (e) => {
-    if (!sidebar.contains(e.target) && e.target !== menuToggle) {
-        sidebar.classList.remove('active');
+// Инициализация при загрузке
+window.onload = () => {
+    if (allChats.length > 0) {
+        if (!currentChatId) currentChatId = allChats[0].id;
+        loadCurrentChat();
+        renderChatList();
+    } else {
+        createNewChat();
     }
-});
-
-document.getElementById('new-chat-btn').addEventListener('click', () => {
-    chatHistory = [];
-    saveHistory();
-    loadHistory();
-    sidebar.classList.remove('active');
-});
-
-// Инициализация
-loadHistory();
-console.log("🔥 FlameAI: Треугольники и Память активированы");
+};

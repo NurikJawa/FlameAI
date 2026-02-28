@@ -2,14 +2,19 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>FlameAI — Digital Entity</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<div class="sidebar-trigger"></div>
-<aside class="sidebar">
+<button id="menu-toggle" class="menu-toggle">
+    <span></span>
+    <span></span>
+    <span></span>
+</button>
+
+<aside class="sidebar" id="sidebar">
     <div class="sidebar-content">
         <button id="new-chat-btn" class="new-chat-btn">
             <span class="plus-icon">+</span> НОВЫЙ ДИАЛОГ

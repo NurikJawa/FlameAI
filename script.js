@@ -1,509 +1,625 @@
 /**
- * FlameAI CORE ENGINE - DESKTOP ARCHITECTURE
- * Version: 13.0 (Monolith)
- * Target: PC Only
- * ---------------------------------------------------------
- * Объектно-ориентированная архитектура.
- * Сложная симуляция физики частиц на фоне.
- * Продвинутая система кэширования и управления DOM.
+ * ============================================================================
+ * FlameAI CORE ENGINE - VISION & CODE EDITION
+ * Version: 14.0 (Monolith PC)
+ * ============================================================================
+ * ОГРОМНЫЙ ФАЙЛ. Включает:
+ * 1. Кастомный парсер кода (без внешних библиотек)
+ * 2. Модуль загрузки изображений (Base64 + Drag&Drop)
+ * 3. Изоляцию кода в отдельное окно (Code Inspector)
+ * 4. Продвинутую симуляцию физики
+ * 5. Систему управления кэшем.
  */
 
 "use strict";
 
 // ============================================================================
-// [1] ADVANCED PARTICLE PHYSICS ENGINE (CANVAS)
+// [1] CUSTOM SYNTAX HIGHLIGHTER (Встроенный движок подсветки)
 // ============================================================================
-class Vector2D {
-    constructor(x, y) {
-        this.x = x;
-        this.y = y;
-    }
-    add(vector) { this.x += vector.x; this.y += vector.y; }
-    sub(vector) { this.x -= vector.x; this.y -= vector.y; }
-    mult(n) { this.x *= n; this.y *= n; }
-    mag() { return Math.sqrt(this.x * this.x + this.y * this.y); }
-    normalize() {
-        const m = this.mag();
-        if (m !== 0) { this.mult(1 / m); }
+class FlameSyntaxHighlighter {
+    static highlight(code, language = 'javascript') {
+        // Базовая защита от XSS
+        let safeCode = code.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+        // Регулярные выражения для токенизации
+        const patterns = [
+            // Комментарии (// или /* */)
+            { regex: /(\/\/.*|\/\*[\s\S]*?\*\/)/g, class: 'syntax-comment' },
+            // Строки (' ' или " " или ` `)
+            { regex: /(['"`])(?:(?!\1)[^\\]|\\.)*\1/g, class: 'syntax-string' },
+            // Ключевые слова (JS/TS/Python/C++)
+            { regex: /\b(const|let|var|function|class|return|if|else|for|while|import|export|from|async|await|try|catch|def|public|private)\b/g, class: 'syntax-keyword' },
+            // Функции (вызовы)
+            { regex: /\b([a-zA-Z_$][a-zA-Z0-9_$]*)\s*(?=\()/g, class: 'syntax-function' },
+            // Числа
+            { regex: /\b(\d+(?:\.\d+)?)\b/g, class: 'syntax-number' },
+            // Встроенные объекты и переменные
+            { regex: /\b(window|document|console|this|true|false|null|undefined)\b/g, class: 'syntax-variable' }
+        ];
+
+        // Временные токены для предотвращения конфликтов замен
+        const tokens = [];
+        let tokenIndex = 0;
+
+        // Извлекаем строки и комментарии первыми, чтобы не ломать логику внутри них
+        patterns.slice(0, 2).forEach(pattern => {
+            safeCode = safeCode.replace(pattern.regex, (match) => {
+                const token = `__FLAME_TOKEN_${tokenIndex++}__`;
+                tokens.push({ token, match, class: pattern.class });
+                return token;
+            });
+        });
+
+        // Применяем остальные правила
+        patterns.slice(2).forEach(pattern => {
+            safeCode = safeCode.replace(pattern.regex, `<span class="${pattern.class}">$1</span>`);
+        });
+
+        // Возвращаем строки и комментарии
+        tokens.forEach(({ token, match, class: className }) => {
+            safeCode = safeCode.replace(token, `<span class="${className}">${match}</span>`);
+        });
+
+        return safeCode;
     }
 }
 
-class Particle {
+// ============================================================================
+// [2] MARKDOWN & CODE PARSER (Разделение текста и кода)
+// ============================================================================
+class FlameParser {
     /**
-     * @param {number} x
-     * @param {number} y
-     * @param {HTMLCanvasElement} canvas
+     * Разбирает ответ ИИ. Извлекает блоки ```code```.
+     * Возвращает объект с чистым текстом и массивом извлеченного кода.
      */
-    constructor(x, y, canvas) {
-        this.canvas = canvas;
-        this.pos = new Vector2D(x, y);
-        this.vel = new Vector2D((Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 0.8);
-        this.acc = new Vector2D(0, 0);
-        this.size = Math.random() * 15 + 5;
-        this.angle = Math.random() * Math.PI * 2;
-        this.spin = (Math.random() - 0.5) * 0.03;
+    static parseResponse(rawText) {
+        const codeBlocks = [];
+        // Ищем блоки вида ```lang ... ```
+        const regex = /```(\w+)?\n([\s\S]*?)```/g;
         
-        // Complex coloring based on theme
-        const isAccent = Math.random() > 0.8;
-        this.color = isAccent ? '#007bff' : '#ffffff';
-        this.baseAlpha = Math.random() * 0.15 + 0.05;
-        this.alpha = this.baseAlpha;
-        this.pulsePhase = Math.random() * Math.PI * 2;
-    }
+        let match;
+        let cleanText = rawText;
 
-    update() {
-        this.vel.add(this.acc);
-        // Friction / Air resistance
-        this.vel.mult(0.995);
-        this.pos.add(this.vel);
-        this.acc.mult(0); // Reset acceleration
-        
-        this.angle += this.spin;
-        
-        // Pulsating effect
-        this.pulsePhase += 0.02;
-        this.alpha = this.baseAlpha + Math.sin(this.pulsePhase) * 0.05;
+        while ((match = regex.exec(rawText)) !== null) {
+            const language = match[1] || 'text';
+            const codeContent = match[2];
+            const blockId = 'code_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+            
+            codeBlocks.push({
+                id: blockId,
+                language: language,
+                code: codeContent.trim()
+            });
 
-        // Wrap around screen boundaries (Infinite Space Desktop)
-        const margin = 50;
-        if (this.pos.x < -margin) this.pos.x = this.canvas.width + margin;
-        if (this.pos.x > this.canvas.width + margin) this.pos.x = -margin;
-        if (this.pos.y < -margin) this.pos.y = this.canvas.height + margin;
-        if (this.pos.y > this.canvas.height + margin) this.pos.y = -margin;
-    }
-
-    applyForce(force) {
-        this.acc.add(force);
-    }
-
-    /**
-     * @param {CanvasRenderingContext2D} ctx 
-     */
-    draw(ctx) {
-        ctx.save();
-        ctx.translate(this.pos.x, this.pos.y);
-        ctx.rotate(this.angle);
-        
-        ctx.beginPath();
-        // Drawing an elegant triangle instead of generic circles
-        ctx.moveTo(0, -this.size);
-        ctx.lineTo(this.size, this.size);
-        ctx.lineTo(-this.size, this.size);
-        ctx.closePath();
-
-        ctx.strokeStyle = this.color;
-        ctx.lineWidth = 1.5;
-        ctx.globalAlpha = this.alpha;
-        
-        if (this.color === '#007bff') {
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = '#007bff';
+            // Заменяем код в оригинальном тексте на специальный HTML-плейсхолдер
+            const placeholder = `
+                <div class="code-alert">
+                    <div class="code-alert-text">📦 Обнаружен фрагмент кода (${language})</div>
+                    <button class="open-code-btn" data-code-id="${blockId}">Посмотреть код</button>
+                </div>
+            `;
+            cleanText = cleanText.replace(match[0], placeholder);
         }
-        
-        ctx.stroke();
-        ctx.restore();
+
+        // Заменяем переносы строк на <br> для обычного текста
+        cleanText = cleanText.replace(/\n/g, '<br>');
+
+        return { text: cleanText, blocks: codeBlocks };
     }
 }
 
-class BackgroundEngine {
-    constructor(canvasId) {
-        this.canvas = document.getElementById(canvasId);
-        if(!this.canvas) return;
+// ============================================================================
+// [3] VISION & UPLOAD MODULE (Анализ Изображений)
+// ============================================================================
+class VisionModule {
+    constructor(uiManager) {
+        this.ui = uiManager;
+        this.currentImageBase64 = null;
+        
+        this.elements = {
+            fileInput: document.getElementById('file-input'),
+            uploadBtn: document.getElementById('upload-btn'),
+            previewContainer: document.getElementById('image-preview-container'),
+            inputZone: document.getElementById('drop-zone')
+        };
+        
+        this.bindEvents();
+    }
+
+    bindEvents() {
+        // Клик по кнопке скрепки
+        this.elements.uploadBtn.addEventListener('click', () => {
+            this.elements.fileInput.click();
+        });
+
+        // Выбор файла через окно
+        this.elements.fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                this.processFile(e.target.files[0]);
+            }
+        });
+
+        // Drag & Drop
+        this.elements.inputZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            this.elements.inputZone.classList.add('dragover');
+        });
+
+        this.elements.inputZone.addEventListener('dragleave', () => {
+            this.elements.inputZone.classList.remove('dragover');
+        });
+
+        this.elements.inputZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            this.elements.inputZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                this.processFile(e.dataTransfer.files[0]);
+            }
+        });
+    }
+
+    processFile(file) {
+        if (!file.type.startsWith('image/')) {
+            this.ui.showToast('Ошибка: Только изображения разрешены для Vision анализа.');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            this.currentImageBase64 = e.target.result;
+            this.showPreview(this.currentImageBase64);
+        };
+        reader.readAsDataURL(file);
+    }
+
+    showPreview(src) {
+        this.elements.previewContainer.innerHTML = `
+            <div class="preview-box">
+                <img src="${src}" alt="Vision Input">
+                <div class="remove-image-btn" id="remove-img">✕</div>
+            </div>
+        `;
+        this.elements.previewContainer.style.display = 'flex';
+        
+        document.getElementById('remove-img').addEventListener('click', () => {
+            this.clear();
+        });
+    }
+
+    clear() {
+        this.currentImageBase64 = null;
+        this.elements.previewContainer.innerHTML = '';
+        this.elements.previewContainer.style.display = 'none';
+        this.elements.fileInput.value = '';
+    }
+
+    hasImage() {
+        return this.currentImageBase64 !== null;
+    }
+
+    getImageData() {
+        return this.currentImageBase64;
+    }
+}
+
+// ============================================================================
+// [4] BACKGROUND PARTICLE ENGINE (Продвинутая Физика)
+// ============================================================================
+class PhysicsEngine {
+    constructor() {
+        this.canvas = document.getElementById('bg-canvas');
         this.ctx = this.canvas.getContext('2d', { alpha: false });
         this.particles = [];
-        this.config = {
-            particleCount: Math.floor((window.innerWidth * window.innerHeight) / 18000), // Responsive density for PC
-            connectionDistance: 180,
-            mouseRepelRadius: 200,
-            mouseForce: 0.05
-        };
-        this.mouse = new Vector2D(-1000, -1000); // Offscreen initially
+        this.width = window.innerWidth;
+        this.height = window.innerHeight;
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
+        
+        // Настройки для тяжелого ПК
+        this.count = 120;
         
         this.init();
-        this.bindEvents();
+        window.addEventListener('resize', () => this.resize());
         this.animate();
-        console.log(`[FlameAI Engine] Core Initialized. Processing ${this.config.particleCount} complex vectors.`);
     }
 
     init() {
-        this.resize();
         this.particles = [];
-        for (let i = 0; i < this.config.particleCount; i++) {
-            this.particles.push(new Particle(
-                Math.random() * this.canvas.width,
-                Math.random() * this.canvas.height,
-                this.canvas
-            ));
+        for (let i = 0; i < this.count; i++) {
+            this.particles.push({
+                x: Math.random() * this.width,
+                y: Math.random() * this.height,
+                vx: (Math.random() - 0.5) * 1.5,
+                vy: (Math.random() - 0.5) * 1.5,
+                size: Math.random() * 3 + 1,
+                color: Math.random() > 0.8 ? '#00e5ff' : '#0055ff'
+            });
         }
     }
 
     resize() {
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
+        this.width = window.innerWidth;
+        this.height = window.innerHeight;
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
     }
 
-    bindEvents() {
-        window.addEventListener('resize', () => {
-            this.resize();
-            // Re-adjust particle count on resize for optimal desktop performance
-            this.config.particleCount = Math.floor((window.innerWidth * window.innerHeight) / 18000);
-            this.init(); 
-        });
+    animate() {
+        this.ctx.fillStyle = '#000511'; // Deep space
+        this.ctx.fillRect(0, 0, this.width, this.height);
 
-        window.addEventListener('mousemove', (e) => {
-            this.mouse.x = e.clientX;
-            this.mouse.y = e.clientY;
-        });
-
-        window.addEventListener('mouseout', () => {
-            this.mouse.x = -1000;
-            this.mouse.y = -1000;
-        });
-    }
-
-    applyMouseInteraction() {
-        for (let p of this.particles) {
-            let dx = p.pos.x - this.mouse.x;
-            let dy = p.pos.y - this.mouse.y;
-            let distance = Math.sqrt(dx * dx + dy * dy);
+        for (let i = 0; i < this.count; i++) {
+            let p = this.particles[i];
             
-            if (distance < this.config.mouseRepelRadius) {
-                let forceMagnitude = (this.config.mouseRepelRadius - distance) / this.config.mouseRepelRadius;
-                let force = new Vector2D(dx, dy);
-                force.normalize();
-                force.mult(forceMagnitude * this.config.mouseForce);
-                p.applyForce(force);
-            }
-        }
-    }
+            p.x += p.vx;
+            p.y += p.vy;
 
-    drawConnections() {
-        for (let i = 0; i < this.particles.length; i++) {
-            for (let j = i + 1; j < this.particles.length; j++) {
-                let p1 = this.particles[i];
+            if (p.x < 0 || p.x > this.width) p.vx *= -1;
+            if (p.y < 0 || p.y > this.height) p.vy *= -1;
+
+            this.ctx.beginPath();
+            this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            this.ctx.fillStyle = p.color;
+            this.ctx.fill();
+
+            // Линии
+            for (let j = i + 1; j < this.count; j++) {
                 let p2 = this.particles[j];
-                let dx = p1.pos.x - p2.pos.x;
-                let dy = p1.pos.y - p2.pos.y;
-                let distance = Math.sqrt(dx * dx + dy * dy);
-
-                if (distance < this.config.connectionDistance) {
+                let dist = Math.hypot(p.x - p2.x, p.y - p2.y);
+                if (dist < 150) {
                     this.ctx.beginPath();
-                    this.ctx.moveTo(p1.pos.x, p1.pos.y);
-                    this.ctx.lineTo(p2.pos.x, p2.pos.y);
-                    
-                    // Gradient calculation based on distance
-                    let opacity = (1 - (distance / this.config.connectionDistance)) * 0.15;
-                    this.ctx.strokeStyle = `rgba(100, 150, 255, ${opacity})`;
-                    this.ctx.lineWidth = 1;
+                    this.ctx.moveTo(p.x, p.y);
+                    this.ctx.lineTo(p2.x, p2.y);
+                    this.ctx.strokeStyle = `rgba(0, 85, 255, ${1 - dist / 150})`;
+                    this.ctx.lineWidth = 0.5;
                     this.ctx.stroke();
                 }
             }
         }
-    }
-
-    animate() {
-        // Deep space background fill
-        this.ctx.fillStyle = '#000814';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-        this.applyMouseInteraction();
-
-        for (let p of this.particles) {
-            p.update();
-            p.draw(this.ctx);
-        }
-
-        this.drawConnections();
-
-        requestAnimationFrame(this.animate.bind(this));
+        requestAnimationFrame(() => this.animate());
     }
 }
 
 // ============================================================================
-// [2] LOCAL STORAGE MANAGER (ENCRYPTED MOCKUP)
+// [5] STORAGE MANAGER (Кэширование с поддержкой картинок)
 // ============================================================================
-class StorageManager {
-    constructor(dbKey) {
-        this.dbKey = dbKey;
-        this.cache = this.load();
+class DBManager {
+    constructor() {
+        this.key = 'flameai_vision_db_v14';
+        this.activeKey = 'flameai_vision_active';
+        this.data = this.load();
     }
 
     load() {
         try {
-            const data = localStorage.getItem(this.dbKey);
-            return data ? JSON.parse(data) : [];
-        } catch (error) {
-            console.error("[StorageManager] Data corruption detected. Resetting database.");
-            return [];
-        }
+            return JSON.parse(localStorage.getItem(this.key)) || [];
+        } catch { return []; }
     }
 
-    save(data) {
+    save() {
         try {
-            // In a real PC app, we might use IndexedDB or base64 encode this
-            localStorage.setItem(this.dbKey, JSON.stringify(data));
-            this.cache = data;
-        } catch (error) {
-            console.error("[StorageManager] Storage quota exceeded.", error);
+            localStorage.setItem(this.key, JSON.stringify(this.data));
+        } catch (e) {
+            console.error("Storage Full! Base64 images taking too much space.");
         }
     }
 
-    getChat(id) {
-        return this.cache.find(chat => chat.id === id) || null;
+    getActiveId() { return localStorage.getItem(this.activeKey); }
+    setActiveId(id) { localStorage.setItem(this.activeKey, id); }
+
+    getAll() { return this.data; }
+    
+    getChat(id) { return this.data.find(c => c.id === id); }
+    
+    addChat(chat) {
+        this.data.unshift(chat);
+        this.save();
     }
 
-    getAllChats() {
-        return this.cache;
-    }
-
-    addChat(chatObj) {
-        this.cache.unshift(chatObj);
-        this.save(this.cache);
-    }
-
-    updateChat(id, updatedData) {
-        const index = this.cache.findIndex(c => c.id === id);
-        if (index !== -1) {
-            this.cache[index] = { ...this.cache[index], ...updatedData };
-            this.save(this.cache);
+    updateChat(id, updates) {
+        const idx = this.data.findIndex(c => c.id === id);
+        if (idx !== -1) {
+            this.data[idx] = { ...this.data[idx], ...updates };
+            this.save();
         }
     }
 
     deleteChat(id) {
-        this.cache = this.cache.filter(c => c.id !== id);
-        this.save(this.cache);
+        this.data = this.data.filter(c => c.id !== id);
+        this.save();
     }
 }
 
 // ============================================================================
-// [3] UI AND STATE CONTROLLER (DESKTOP WORKSPACE)
+// [6] UI CONTROLLER & APP CORE
 // ============================================================================
-class FlameUIManager {
-    constructor(storage) {
-        this.storage = storage;
-        this.activeChatId = localStorage.getItem('flame_active_workspace') || null;
+class FlameApp {
+    constructor() {
+        this.db = new DBManager();
+        this.vision = new VisionModule(this);
+        this.codeBlocksMap = new Map(); // Хранит сгенерированный код
         this.isProcessing = false;
 
-        // DOM Elements setup
         this.dom = {
-            sidebarList: document.getElementById('chat-list'),
+            sidebar: document.getElementById('chat-list'),
             chatArea: document.getElementById('chat-messages'),
-            inputBox: document.getElementById('user-input'),
+            input: document.getElementById('text-input'),
             sendBtn: document.getElementById('send-btn'),
-            newChatBtn: document.getElementById('new-chat-btn')
+            newBtn: document.getElementById('new-chat-btn'),
+            
+            // Code Inspector Elements
+            codePanel: document.getElementById('code-inspector'),
+            codeTitle: document.getElementById('ci-title'),
+            codePre: document.getElementById('ci-pre'),
+            closeCodeBtn: document.getElementById('ci-close'),
+            copyCodeBtn: document.getElementById('ci-copy')
         };
 
         this.init();
     }
 
     init() {
+        new PhysicsEngine();
         this.bindEvents();
-        const chats = this.storage.getAllChats();
         
-        if (chats.length === 0) {
-            this.createNewWorkspace();
-        } else {
-            // Ensure active chat exists
-            if (!this.storage.getChat(this.activeChatId)) {
-                this.activeChatId = chats[0].id;
-                this.persistActiveChat();
+        const active = this.db.getActiveId();
+        if (!active || !this.db.getChat(active)) {
+            if (this.db.getAll().length > 0) {
+                this.db.setActiveId(this.db.getAll()[0].id);
+            } else {
+                this.createNewSession();
             }
-            this.renderSidebar();
-            this.renderChatWindow();
         }
         
-        // Auto-focus input on desktop load
-        if(this.dom.inputBox) {
-            setTimeout(() => this.dom.inputBox.focus(), 500);
-        }
-    }
-
-    persistActiveChat() {
-        localStorage.setItem('flame_active_workspace', this.activeChatId);
+        this.renderSidebar();
+        this.renderChat();
     }
 
     bindEvents() {
-        if(this.dom.newChatBtn) {
-            this.dom.newChatBtn.addEventListener('click', () => this.createNewWorkspace());
-        }
-
-        if(this.dom.sendBtn) {
-            this.dom.sendBtn.addEventListener('click', () => this.processUserInput());
-        }
-
-        if(this.dom.inputBox) {
-            this.dom.inputBox.addEventListener('keydown', (e) => {
-                // Submit on Enter (but allow Shift+Enter for new line)
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    this.processUserInput();
-                }
-            });
-
-            // Auto-resize textarea logic
-            this.dom.inputBox.addEventListener('input', function() {
-                this.style.height = '56px'; // Reset base height
-                let scrollHeight = this.scrollHeight;
-                if (scrollHeight > 56 && scrollHeight < 200) {
-                    this.style.height = scrollHeight + 'px';
-                } else if (scrollHeight >= 200) {
-                    this.style.height = '200px';
-                }
-            });
-        }
-    }
-
-    createNewWorkspace() {
-        const timestamp = Date.now();
-        const newChat = {
-            id: `workspace_${timestamp}_${Math.random().toString(36).substr(2, 5)}`,
-            title: "Новый процесс",
-            messages: [],
-            created_at: new Date().toISOString()
-        };
-
-        this.storage.addChat(newChat);
-        this.activeChatId = newChat.id;
-        this.persistActiveChat();
-        
-        this.renderSidebar();
-        this.renderChatWindow();
-        if(this.dom.inputBox) this.dom.inputBox.focus();
-    }
-
-    deleteWorkspace(id, event) {
-        event.stopPropagation(); // Prevent triggering chat selection
-        
-        // Confirm deletion mapping to standard desktop OS UX
-        if(confirm("Удалить этот лог чата навсегда?")) {
-            this.storage.deleteChat(id);
-            const remaining = this.storage.getAllChats();
-            
-            if (this.activeChatId === id) {
-                this.activeChatId = remaining.length > 0 ? remaining[0].id : null;
-                this.persistActiveChat();
-                
-                if (!this.activeChatId) {
-                    this.createNewWorkspace();
-                    return;
-                }
+        this.dom.newBtn.addEventListener('click', () => this.createNewSession());
+        this.dom.sendBtn.addEventListener('click', () => this.handleSend());
+        this.dom.input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.handleSend();
             }
-            this.renderSidebar();
-            this.renderChatWindow();
-        }
+        });
+
+        // Code Inspector Events
+        this.dom.closeCodeBtn.addEventListener('click', () => {
+            this.dom.codePanel.classList.remove('open');
+        });
+        
+        this.dom.copyCodeBtn.addEventListener('click', () => {
+            const code = this.dom.codePre.innerText;
+            navigator.clipboard.writeText(code).then(() => {
+                this.showToast("Код скопирован в буфер обмена!");
+            });
+        });
+    }
+
+    createNewSession() {
+        const id = 'flame_vc_' + Date.now();
+        this.db.addChat({ id, title: "Новый анализ", messages: [] });
+        this.db.setActiveId(id);
+        this.vision.clear();
+        this.renderSidebar();
+        this.renderChat();
+        this.dom.codePanel.classList.remove('open');
     }
 
     renderSidebar() {
-        if (!this.dom.sidebarList) return;
-        this.dom.sidebarList.innerHTML = '';
+        this.dom.sidebar.innerHTML = '';
+        const activeId = this.db.getActiveId();
         
-        const chats = this.storage.getAllChats();
-        
-        chats.forEach(chat => {
-            const el = document.createElement('div');
-            el.className = `chat-item ${chat.id === this.activeChatId ? 'active' : ''}`;
+        this.db.getAll().forEach(chat => {
+            const item = document.createElement('div');
+            item.className = `chat-item ${chat.id === activeId ? 'active' : ''}`;
             
-            el.innerHTML = `
-                <div class="chat-item-content">
-                    <svg class="chat-item-icon" viewBox="0 0 24 24">
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                    </svg>
-                    <span class="chat-item-title">${this.escapeHTML(chat.title)}</span>
-                </div>
-                <div class="chat-item-delete" title="Delete Log">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                </div>
-            `;
-
-            // Setup listeners
-            el.addEventListener('click', () => {
-                if (this.activeChatId === chat.id) return;
-                this.activeChatId = chat.id;
-                this.persistActiveChat();
+            const title = document.createElement('span');
+            title.textContent = chat.title || "Анализ файлов";
+            
+            const delBtn = document.createElement('div');
+            delBtn.className = 'delete-chat';
+            delBtn.innerHTML = '✕';
+            delBtn.onclick = (e) => {
+                e.stopPropagation();
+                if(confirm("Удалить этот лог навсегда?")) {
+                    this.db.deleteChat(chat.id);
+                    const remaining = this.db.getAll();
+                    if (remaining.length > 0) {
+                        this.db.setActiveId(remaining[0].id);
+                    } else {
+                        this.createNewSession();
+                    }
+                    this.renderSidebar();
+                    this.renderChat();
+                    this.dom.codePanel.classList.remove('open');
+                }
+            };
+            
+            item.appendChild(title);
+            item.appendChild(delBtn);
+            
+            item.onclick = () => {
+                if (chat.id === activeId) return;
+                this.db.setActiveId(chat.id);
                 this.renderSidebar();
-                this.renderChatWindow();
-            });
-
-            const delBtn = el.querySelector('.chat-item-delete');
-            delBtn.addEventListener('click', (e) => this.deleteWorkspace(chat.id, e));
-
-            this.dom.sidebarList.appendChild(el);
+                this.renderChat();
+                this.dom.codePanel.classList.remove('open');
+            };
+            
+            this.dom.sidebar.appendChild(item);
         });
     }
 
-    renderChatWindow() {
-        if (!this.dom.chatArea) return;
+    renderChat() {
         this.dom.chatArea.innerHTML = '';
-
-        const activeChat = this.storage.getChat(this.activeChatId);
+        this.codeBlocksMap.clear(); // Сброс карты кода
         
-        if (!activeChat || activeChat.messages.length === 0) {
-            this.showWelcomeScreen();
-            return;
-        }
+        const activeId = this.db.getActiveId();
+        const chat = this.db.getChat(activeId);
+        if (!chat) return;
 
-        activeChat.messages.forEach(msg => {
-            this.appendMessageElement(msg.role, msg.text);
+        chat.messages.forEach(msg => {
+            this.appendMessage(msg.role, msg.text, msg.image);
+            
+            // Если ИИ, парсим код заново для карты
+            if (msg.role === 'assistant') {
+                const parsed = FlameParser.parseResponse(msg.text);
+                parsed.blocks.forEach(b => this.codeBlocksMap.set(b.id, b));
+            }
         });
-
+        
         this.scrollToBottom();
     }
 
-    showWelcomeScreen() {
-        this.dom.chatArea.innerHTML = `
-            <div class="welcome-screen">
-                <div class="welcome-icon">🔥</div>
-                <h1 class="welcome-title">Система FlameAI</h1>
-                <p class="welcome-subtitle">Ядро инициализировано и готово к работе. Ожидаю ввод данных на главном терминале.</p>
-            </div>
-        `;
-    }
-
-    escapeHTML(str) {
-        return str.replace(/[&<>'"]/g, tag => ({
-            '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
-        }[tag] || tag));
-    }
-
-    formatTextForHTML(text) {
-        // Simple formatter for line breaks. In a full app, marked.js would be used here.
-        let safeText = this.escapeHTML(text);
-        return safeText.replace(/\n/g, '<br>');
-    }
-
-    appendMessageElement(role, text, isTyping = false) {
-        // Remove welcome screen if present
-        const welcome = this.dom.chatArea.querySelector('.welcome-screen');
-        if (welcome) welcome.remove();
-
+    appendMessage(role, text, imageSrc = null, isTyping = false) {
         const wrapper = document.createElement('div');
-        wrapper.className = `message-wrapper ${role === 'user' ? 'user-wrapper' : 'ai-wrapper'}`;
+        wrapper.className = `message-block ${role === 'user' ? 'user-block' : 'ai-block'}`;
 
-        const senderName = document.createElement('div');
-        senderName.className = 'message-sender-name';
-        senderName.textContent = role === 'user' ? 'Терминал Пользователя' : 'FlameAI Core';
-        
-        const messageDiv = document.createElement('div');
-        
+        const sender = document.createElement('div');
+        sender.className = 'message-sender';
+        sender.textContent = role === 'user' ? 'Flame Console' : 'FlameAI Vision Core';
+        wrapper.appendChild(sender);
+
+        const content = document.createElement('div');
+        content.className = 'message-content';
+
         if (isTyping) {
-            messageDiv.className = 'typing-indicator';
-            messageDiv.innerHTML = `
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-            `;
-            wrapper.id = 'flame-typing-indicator';
+            content.innerHTML = `<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
+            wrapper.id = 'flame-typing';
         } else {
-            messageDiv.className = `message ${role === 'user' ? 'user-message' : 'ai-message'}`;
-            messageDiv.innerHTML = this.formatTextForHTML(text);
+            // Если текст от ИИ, парсим его
+            if (role === 'assistant') {
+                const parsed = FlameParser.parseResponse(text);
+                content.innerHTML = parsed.text;
+                
+                // Добавляем обработчики кнопок открытия кода
+                setTimeout(() => {
+                    const btns = content.querySelectorAll('.open-code-btn');
+                    btns.forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            const codeId = btn.getAttribute('data-code-id');
+                            this.openCodeInspector(codeId);
+                        });
+                    });
+                }, 100);
+
+            } else {
+                content.innerHTML = text.replace(/\n/g, '<br>');
+            }
+
+            // Изображение пользователя
+            if (imageSrc) {
+                const img = document.createElement('img');
+                img.className = 'chat-attached-image';
+                img.src = imageSrc;
+                content.appendChild(img);
+            }
+
+            // Кнопка копирования текста сообщения
+            const copyBtn = document.createElement('div');
+            copyBtn.className = 'copy-text-btn';
+            copyBtn.innerHTML = `<span>📋</span> Copy Text`;
+            copyBtn.onclick = () => {
+                const cleanText = text.replace(/```[\s\S]*?```/g, '[Смотреть код во вкладке]'); // Удаляем сырой код из текста
+                navigator.clipboard.writeText(cleanText).then(() => this.showToast('Текст скопирован!'));
+            };
+            content.appendChild(copyBtn);
         }
 
-        wrapper.appendChild(senderName);
-        wrapper.appendChild(messageDiv);
+        wrapper.appendChild(content);
         this.dom.chatArea.appendChild(wrapper);
+    }
+
+    openCodeInspector(codeId) {
+        const block = this.codeBlocksMap.get(codeId);
+        if (!block) return;
+
+        this.dom.codeTitle.textContent = `${block.language.toUpperCase()} Script`;
+        
+        // Применяем кастомную подсветку синтаксиса
+        const highlighted = FlameSyntaxHighlighter.highlight(block.code, block.language);
+        this.dom.codePre.innerHTML = highlighted;
+
+        // Открываем панель с правой стороны
+        this.dom.codePanel.classList.add('open');
+    }
+
+    async handleSend() {
+        if (this.isProcessing) return;
+        
+        const rawText = this.dom.input.value.trim();
+        const hasImg = this.vision.hasImage();
+        const imgSrc = this.vision.getImageData();
+        
+        if (!rawText && !hasImg) return;
+
+        this.isProcessing = true;
+        this.dom.input.value = '';
+        this.vision.clear();
+
+        const activeId = this.db.getActiveId();
+        const chat = this.db.getChat(activeId);
+
+        // Обновляем название чата
+        if (chat.messages.length === 0) {
+            chat.title = rawText ? rawText.substring(0, 20) : "Анализ изображения";
+            this.db.updateChat(activeId, { title: chat.title });
+            this.renderSidebar();
+        }
+
+        chat.messages.push({ role: 'user', text: rawText, image: imgSrc });
+        this.db.updateChat(activeId, { messages: chat.messages });
+        this.appendMessage('user', rawText, imgSrc);
+        this.scrollToBottom();
+
+        this.appendMessage('assistant', '', null, true);
+        this.scrollToBottom();
+
+        // Симуляция отправки на Vision сервер
+        try {
+            const bodyData = { message: rawText };
+            if (imgSrc) bodyData.image = imgSrc;
+
+            const res = await fetch('/api/vision', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(bodyData)
+            });
+
+            const data = await res.json();
+            const reply = data.reply || this.generateMockResponse(); // Фейковый ответ с кодом для тестов
+
+            document.getElementById('flame-typing').remove();
+
+            // Парсим ответ и сохраняем блоки в память для текущей сессии
+            const parsedInfo = FlameParser.parseResponse(reply);
+            parsedInfo.blocks.forEach(b => this.codeBlocksMap.set(b.id, b));
+
+            chat.messages.push({ role: 'assistant', text: reply });
+            this.db.updateChat(activeId, { messages: chat.messages });
+            this.appendMessage('assistant', reply);
+            this.scrollToBottom();
+
+        } catch (e) {
+            document.getElementById('flame-typing').remove();
+            
+            // Если сервера нет, кидаем фейковый ответ, чтобы ты мог увидеть разделение окон
+            console.warn("API Offline. Using localized test script generation.");
+            const fakeReply = this.generateMockResponse();
+            
+            const parsedInfo = FlameParser.parseResponse(fakeReply);
+            parsedInfo.blocks.forEach(b => this.codeBlocksMap.set(b.id, b));
+
+            chat.messages.push({ role: 'assistant', text: fakeReply });
+            this.db.updateChat(activeId, { messages: chat.messages });
+            this.appendMessage('assistant', fakeReply);
+            this.scrollToBottom();
+        } finally {
+            this.isProcessing = false;
+        }
     }
 
     scrollToBottom() {
@@ -515,103 +631,35 @@ class FlameUIManager {
         });
     }
 
-    removeTypingIndicator() {
-        const indicator = document.getElementById('flame-typing-indicator');
-        if (indicator) indicator.remove();
+    showToast(msg) {
+        let container = document.getElementById('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            document.body.appendChild(container);
+        }
+
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = msg;
+        container.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = '0.3s';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
     }
 
-    async processUserInput() {
-        if (this.isProcessing) return;
-        
-        const rawText = this.dom.inputBox.value.trim();
-        if (!rawText) return;
-
-        // Reset input area sizing
-        this.dom.inputBox.value = '';
-        this.dom.inputBox.style.height = '56px';
-        
-        this.isProcessing = true;
-        const currentChat = this.storage.getChat(this.activeChatId);
-
-        // Auto-generate title if it's the first message
-        if (currentChat.messages.length === 0) {
-            let newTitle = rawText.length > 25 ? rawText.substring(0, 25) + "..." : rawText;
-            currentChat.title = newTitle;
-            this.storage.updateChat(this.activeChatId, { title: newTitle });
-            this.renderSidebar(); // Update title in UI
-        }
-
-        // Save and Render User Message
-        currentChat.messages.push({ role: 'user', text: rawText });
-        this.storage.updateChat(this.activeChatId, { messages: currentChat.messages });
-        this.appendMessageElement('user', rawText);
-        this.scrollToBottom();
-
-        // Render AI Typing state
-        this.appendMessageElement('assistant', '', true);
-        this.scrollToBottom();
-
-        // Simulate Network Request to backend
-        try {
-            const response = await fetch('/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: rawText })
-            });
-            
-            let replyText;
-            if (response.ok) {
-                const data = await response.json();
-                replyText = data.reply || "Пустой ответ от сервера.";
-            } else {
-                // If backend isn't connected, fallback to a graceful error
-                console.warn("[FlameAI Network] Server offline, using local simulation.");
-                await new Promise(r => setTimeout(r, 1500)); // Fake latency
-                replyText = "Подключение к серверному ядру прервано. Это локальная симуляция FlameAI.";
-            }
-
-            this.removeTypingIndicator();
-            
-            // Save and render AI response
-            currentChat.messages.push({ role: 'assistant', text: replyText });
-            this.storage.updateChat(this.activeChatId, { messages: currentChat.messages });
-            this.appendMessageElement('assistant', replyText);
-            this.scrollToBottom();
-
-        } catch (error) {
-            console.error("[FlameAI Fetch Error]", error);
-            this.removeTypingIndicator();
-            
-            const errorMsg = "Критический сбой протокола связи. Проверьте соединение.";
-            currentChat.messages.push({ role: 'assistant', text: errorMsg });
-            this.storage.updateChat(this.activeChatId, { messages: currentChat.messages });
-            this.appendMessageElement('assistant', errorMsg);
-            this.scrollToBottom();
-        } finally {
-            this.isProcessing = false;
-            if(this.dom.inputBox) this.dom.inputBox.focus();
-        }
+    generateMockResponse() {
+        return `Я проанализировал ваш запрос и изображение макета.\nСтруктура требует создания отдельного класса для обработки рендера. Вот готовая реализация:\n\n\`\`\`javascript\nclass RenderEngine {\n    constructor(canvasId) {\n        this.canvas = document.getElementById(canvasId);\n        this.ctx = this.canvas.getContext('2d');\n        console.log("Renderer ready");\n    }\n\n    drawObject(x, y, color) {\n        this.ctx.fillStyle = color;\n        this.ctx.fillRect(x, y, 100, 100);\n    }\n}\n\`\`\`\n\nТакже, для стилизации кнопок, добавьте следующий CSS в главный файл:\n\n\`\`\`css\n.btn-render {\n    background: #007bff;\n    color: white;\n    padding: 15px 30px;\n    border-radius: 8px;\n    box-shadow: 0 10px 20px rgba(0, 123, 255, 0.4);\n}\n\`\`\`\n\nНажмите на кнопку просмотра кода в чате, чтобы открыть его в безопасной изолированной вкладке Code Inspector. Там вы сможете скопировать его в один клик.`;
     }
 }
 
 // ============================================================================
-// [4] SYSTEM INITIALIZATION
+// [7] BOOTSTRAP
 // ============================================================================
-document.addEventListener('DOMContentLoaded', () => {
-    // 1. Boot up hardware accelerated background
-    const bgEngine = new BackgroundEngine('bg-canvas');
-    
-    // 2. Initialize encrypted storage logic
-    const dbManager = new StorageManager('flameai_core_db_v13');
-    
-    // 3. Mount UI logic
-    const appUI = new FlameUIManager(dbManager);
-    
-    // Disable right-click in app for "software" feel
-    document.addEventListener('contextmenu', event => event.preventDefault());
-
-    console.log("=========================================");
-    console.log("🔥 FlameAI Core System Booted Successfully");
-    console.log("💻 Architecture: Pure Desktop Edition");
-    console.log("=========================================");
+window.addEventListener('load', () => {
+    window.flameCore = new FlameApp();
+    console.log("🔥 FlameAI Vision & Code Edition | System Online | Memory Allocated");
 });

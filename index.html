@@ -2,62 +2,50 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>FlameAI Vision & Code Edition</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FlameAI — Digital Entity</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <canvas id="bg-canvas"></canvas>
-    
-    <div id="app-container">
-        <aside class="sidebar">
-            <div class="brand">
-                <div class="brand-icon">F</div>
-                <div class="brand-text">FlameAI</div>
-            </div>
-            <button id="new-chat-btn" class="new-chat-btn">+ НОВЫЙ АНАЛИЗ</button>
-            <div class="history-title">ИСТОРИЯ СЕССИЙ</div>
-            <div id="chat-list" class="chat-list"></div>
-        </aside>
 
-        <main class="workspace">
-            <section class="chat-section">
-                <header class="chat-header">
-                    <div class="header-title">Vision Console v2.0</div>
-                    <div class="header-status"><div class="status-dot"></div> ONLINE</div>
-                </header>
+<button id="menu-toggle" class="menu-toggle">
+    <span></span>
+    <span></span>
+    <span></span>
+</button>
 
-                <div id="chat-messages"></div>
-
-                <div class="input-zone" id="drop-zone">
-                    <div id="image-preview-container"></div>
-                    <div class="input-form">
-                        <label for="file-input" class="vision-upload-btn" id="upload-btn">📎</label>
-                        <input type="file" id="file-input" accept="image/*">
-                        <textarea id="text-input" placeholder="Введите запрос или перетащите скриншот кода..."></textarea>
-                        <button class="send-btn" id="send-btn">➔</button>
-                    </div>
-                </div>
-            </section>
-
-            <div id="code-inspector">
-                <div class="code-inspector-header">
-                    <div class="code-title-area">
-                        <span class="code-icon">{}</span>
-                        <div id="ci-title" class="code-title">Script_Output.js</div>
-                    </div>
-                    <div class="code-actions">
-                        <button id="ci-copy" class="action-btn btn-copy">Копировать код</button>
-                        <button id="ci-close" class="action-btn btn-close">Закрыть</button>
-                    </div>
-                </div>
-                <div class="code-content-area">
-                    <pre id="ci-pre" class="flame-code-block"></pre>
-                </div>
-            </div>
-        </main>
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-content">
+        <button id="new-chat-btn" class="new-chat-btn">
+            <span class="plus-icon">+</span> НОВЫЙ ДИАЛОГ
+        </button>
+        <div class="history-label">ИСТОРИЯ ПАМЯТИ</div>
+        <div id="chat-list" class="chat-list"></div>
     </div>
+</aside>
 
-    <div id="toast-container"></div>
-    <script src="script.js"></script>
+<canvas id="bg-canvas"></canvas>
+
+<main class="chat-container">
+    <header class="chat-header">
+        <div class="status-group">
+            <div class="status-dot"></div>
+            <span class="status-text">FLAME AI</span>
+        </div>
+    </header>
+    
+    <div id="chat-messages"></div>
+    
+    <footer class="input-area">
+        <div class="input-wrapper">
+            <input type="text" id="user-input" placeholder="Введите ваш запрос..." autocomplete="off">
+            <button id="send-btn">
+                <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+            </button>
+        </div>
+    </footer>
+</main>
+
+<script src="script.js"></script>
 </body>
 </html>

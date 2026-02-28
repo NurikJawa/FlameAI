@@ -1,216 +1,200 @@
 /**
- * ============================================================================
- * FlameAI CORE ENGINE - VISION & CODE EDITION
- * Version: 14.0.5 (Monolith PC)
- * ============================================================================
- * [ СТАТУС: ЛОКАЛЬНОЕ ЯДРО АКТИВИРОВАНО ]
- * [ API: ОТКЛЮЧЕНО ПО ПРИКАЗУ ]
- * ----------------------------------------------------------------------------
- * Включает:
- * 1. Кастомный рендер синтаксиса (FlameSyntax)
- * 2. Движок облачных частиц (PhysicsEngine)
- * 3. Локальный обработчик запросов (CoreLogic)
- * 4. Систему управления памятью (DBManager)
- * 5. Визуальный интерфейс "Пузыри" (Bubble UI)
- * ============================================================================
+ * FlameAI CORE ENGINE - DESKTOP ARCHITECTURE
+ * Version: 13.0 (Monolith)
+ * Target: PC Only
+ * ---------------------------------------------------------
+ * Объектно-ориентированная архитектура.
+ * Сложная симуляция физики частиц на фоне.
+ * Продвинутая система кэширования и управления DOM.
  */
 
 "use strict";
 
 // ============================================================================
-// [1] FLAME SYNTAX HIGHLIGHTER - ДЕТАЛЬНАЯ ПОДСВЕТКА КОДА
+// [1] ADVANCED PARTICLE PHYSICS ENGINE (CANVAS)
 // ============================================================================
-class FlameSyntaxHighlighter {
-    static highlight(code, language = 'javascript') {
-        // Экранирование для безопасности
-        let safeCode = code.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-        // Набор правил для токенизации (JS, CSS, HTML, Python)
-        const patterns = [
-            { regex: /(\/\/.*|\/\*[\s\S]*?\*\/)/g, class: 'syntax-comment' },
-            { regex: /(['"`])(?:(?!\1)[^\\]|\\.)*\1/g, class: 'syntax-string' },
-            { regex: /\b(const|let|var|function|class|return|if|else|for|while|import|export|async|await|try|catch|new|this)\b/g, class: 'syntax-keyword' },
-            { regex: /\b(def|print|self|import|from|if|else|elif|for|while|return|class|try|except)\b/g, class: 'syntax-keyword-py' },
-            { regex: /\b([a-zA-Z_$][a-zA-Z0-9_$]*)\s*(?=\()/g, class: 'syntax-function' },
-            { regex: /\b(\d+(?:\.\d+)?)\b/g, class: 'syntax-number' },
-            { regex: /\b(window|document|console|true|false|null|undefined)\b/g, class: 'syntax-variable' },
-            { regex: /\.(?=[a-z])([a-z0-9-]+)\b/g, class: 'syntax-css-class' },
-            { regex: /#(?=[a-z])([a-z0-9-]+)\b/g, class: 'syntax-css-id' }
-        ];
-
-        const tokens = [];
-        let tokenIndex = 0;
-
-        // Изолируем строки и комментарии
-        patterns.slice(0, 2).forEach(pattern => {
-            safeCode = safeCode.replace(pattern.regex, (match) => {
-                const token = `__TOKEN_F_${tokenIndex++}__`;
-                tokens.push({ token, match, class: pattern.class });
-                return token;
-            });
-        });
-
-        // Применяем логические правила
-        patterns.slice(2).forEach(pattern => {
-            safeCode = safeCode.replace(pattern.regex, `<span class="${pattern.class}">$1</span>`);
-        });
-
-        // Возвращаем изолированные элементы
-        tokens.forEach(({ token, match, class: className }) => {
-            safeCode = safeCode.replace(token, `<span class="${className}">${match}</span>`);
-        });
-
-        return safeCode;
+class Vector2D {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+    }
+    add(vector) { this.x += vector.x; this.y += vector.y; }
+    sub(vector) { this.x -= vector.x; this.y -= vector.y; }
+    mult(n) { this.x *= n; this.y *= n; }
+    mag() { return Math.sqrt(this.x * this.x + this.y * this.y); }
+    normalize() {
+        const m = this.mag();
+        if (m !== 0) { this.mult(1 / m); }
     }
 }
 
-// ============================================================================
-// [2] FLAME PARSER - ОБРАБОТКА ТЕКСТА И КОДА
-// ============================================================================
-class FlameParser {
-    static parseResponse(rawText) {
-        // Поиск блоков кода Markdown ```...```
-        const codeRegex = /```(\w+)?\n([\s\S]*?)```/g;
-        let processedContent = rawText;
-
-        processedContent = processedContent.replace(codeRegex, (match, lang, code) => {
-            const detectedLang = lang || 'javascript';
-            const highlightedCode = FlameSyntaxHighlighter.highlight(code.trim(), detectedLang);
-            
-            return `
-                <div class="code-block-wrapper">
-                    <div class="code-block-top">
-                        <span class="lang-tag">${detectedLang.toUpperCase()}</span>
-                        <button class="copy-btn-mini" onclick="window.flameCore.copyToClipboard(this)">Copy</button>
-                    </div>
-                    <pre class="flame-code-body"><code>${highlightedCode}</code></pre>
-                </div>
-            `;
-        });
-
-        // Преобразование переносов строк
-        processedContent = processedContent.replace(/\n/g, '<br>');
-        return { html: processedContent };
-    }
-}
-
-// ============================================================================
-// [3] VISION MODULE - ОБРАБОТКА ИЗОБРАЖЕНИЙ (БЕЗ API)
-// ============================================================================
-class VisionModule {
-    constructor(ui) {
-        this.ui = ui;
-        this.currentData = null;
-        this.elements = {
-            input: document.getElementById('file-input'),
-            btn: document.getElementById('upload-btn'),
-            preview: document.getElementById('image-preview-container')
-        };
-        this.init();
-    }
-
-    init() {
-        if (!this.elements.btn) return;
-        this.elements.btn.addEventListener('click', () => this.elements.input.click());
-        this.elements.input.addEventListener('change', (e) => this.handleFiles(e.target.files));
+class Particle {
+    /**
+     * @param {number} x
+     * @param {number} y
+     * @param {HTMLCanvasElement} canvas
+     */
+    constructor(x, y, canvas) {
+        this.canvas = canvas;
+        this.pos = new Vector2D(x, y);
+        this.vel = new Vector2D((Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 0.8);
+        this.acc = new Vector2D(0, 0);
+        this.size = Math.random() * 15 + 5;
+        this.angle = Math.random() * Math.PI * 2;
+        this.spin = (Math.random() - 0.5) * 0.03;
         
-        // Drag & Drop логика
-        const dropZone = document.getElementById('drop-zone');
-        if (dropZone) {
-            dropZone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                dropZone.classList.add('drag-active');
-            });
-            dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-active'));
-            dropZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                dropZone.classList.remove('drag-active');
-                this.handleFiles(e.dataTransfer.files);
-            });
+        // Complex coloring based on theme
+        const isAccent = Math.random() > 0.8;
+        this.color = isAccent ? '#007bff' : '#ffffff';
+        this.baseAlpha = Math.random() * 0.15 + 0.05;
+        this.alpha = this.baseAlpha;
+        this.pulsePhase = Math.random() * Math.PI * 2;
+    }
+
+    update() {
+        this.vel.add(this.acc);
+        // Friction / Air resistance
+        this.vel.mult(0.995);
+        this.pos.add(this.vel);
+        this.acc.mult(0); // Reset acceleration
+        
+        this.angle += this.spin;
+        
+        // Pulsating effect
+        this.pulsePhase += 0.02;
+        this.alpha = this.baseAlpha + Math.sin(this.pulsePhase) * 0.05;
+
+        // Wrap around screen boundaries (Infinite Space Desktop)
+        const margin = 50;
+        if (this.pos.x < -margin) this.pos.x = this.canvas.width + margin;
+        if (this.pos.x > this.canvas.width + margin) this.pos.x = -margin;
+        if (this.pos.y < -margin) this.pos.y = this.canvas.height + margin;
+        if (this.pos.y > this.canvas.height + margin) this.pos.y = -margin;
+    }
+
+    applyForce(force) {
+        this.acc.add(force);
+    }
+
+    /**
+     * @param {CanvasRenderingContext2D} ctx 
+     */
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.pos.x, this.pos.y);
+        ctx.rotate(this.angle);
+        
+        ctx.beginPath();
+        // Drawing an elegant triangle instead of generic circles
+        ctx.moveTo(0, -this.size);
+        ctx.lineTo(this.size, this.size);
+        ctx.lineTo(-this.size, this.size);
+        ctx.closePath();
+
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = this.alpha;
+        
+        if (this.color === '#007bff') {
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#007bff';
         }
+        
+        ctx.stroke();
+        ctx.restore();
     }
-
-    handleFiles(files) {
-        if (files.length === 0) return;
-        const file = files[0];
-        if (!file.type.startsWith('image/')) {
-            alert("FlameAI: Только изображения поддерживаются в Vision-модуле.");
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            this.currentData = e.target.result;
-            this.renderPreview();
-        };
-        reader.readAsDataURL(file);
-    }
-
-    renderPreview() {
-        this.elements.preview.innerHTML = `
-            <div class="img-preview-box">
-                <img src="${this.currentData}">
-                <div class="img-cancel" onclick="window.flameCore.vision.clear()">✕</div>
-            </div>
-        `;
-        this.elements.preview.style.display = 'flex';
-    }
-
-    clear() {
-        this.currentData = null;
-        this.elements.preview.style.display = 'none';
-        this.elements.preview.innerHTML = '';
-        this.elements.input.value = '';
-    }
-
-    getData() { return this.currentData; }
 }
 
-// ============================================================================
-// [4] PHYSICS ENGINE - ГЕНЕРАТОР ЧАСТИЦ ФОНА
-// ============================================================================
-class PhysicsEngine {
-    constructor() {
-        this.canvas = document.getElementById('bg-canvas');
-        if (!this.canvas) return;
-        this.ctx = this.canvas.getContext('2d');
+class BackgroundEngine {
+    constructor(canvasId) {
+        this.canvas = document.getElementById(canvasId);
+        if(!this.canvas) return;
+        this.ctx = this.canvas.getContext('2d', { alpha: false });
         this.particles = [];
-        this.count = 160; // Увеличенное количество для "тяжелого" эффекта
+        this.config = {
+            particleCount: Math.floor((window.innerWidth * window.innerHeight) / 18000), // Responsive density for PC
+            connectionDistance: 180,
+            mouseRepelRadius: 200,
+            mouseForce: 0.05
+        };
+        this.mouse = new Vector2D(-1000, -1000); // Offscreen initially
+        
         this.init();
+        this.bindEvents();
         this.animate();
-        window.addEventListener('resize', () => this.init());
+        console.log(`[FlameAI Engine] Core Initialized. Processing ${this.config.particleCount} complex vectors.`);
     }
 
     init() {
-        this.width = window.innerWidth;
-        this.height = window.innerHeight;
-        this.canvas.width = this.width;
-        this.canvas.height = this.height;
+        this.resize();
         this.particles = [];
-        for (let i = 0; i < this.count; i++) {
-            this.particles.push({
-                x: Math.random() * this.width,
-                y: Math.random() * this.height,
-                vx: (Math.random() - 0.5) * 1.6,
-                vy: (Math.random() - 0.5) * 1.6,
-                radius: Math.random() * 2.2 + 0.5,
-                color: Math.random() > 0.8 ? '#00e5ff' : '#0066ff'
-            });
+        for (let i = 0; i < this.config.particleCount; i++) {
+            this.particles.push(new Particle(
+                Math.random() * this.canvas.width,
+                Math.random() * this.canvas.height,
+                this.canvas
+            ));
         }
     }
 
-    drawLines() {
+    resize() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+    }
+
+    bindEvents() {
+        window.addEventListener('resize', () => {
+            this.resize();
+            // Re-adjust particle count on resize for optimal desktop performance
+            this.config.particleCount = Math.floor((window.innerWidth * window.innerHeight) / 18000);
+            this.init(); 
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            this.mouse.x = e.clientX;
+            this.mouse.y = e.clientY;
+        });
+
+        window.addEventListener('mouseout', () => {
+            this.mouse.x = -1000;
+            this.mouse.y = -1000;
+        });
+    }
+
+    applyMouseInteraction() {
+        for (let p of this.particles) {
+            let dx = p.pos.x - this.mouse.x;
+            let dy = p.pos.y - this.mouse.y;
+            let distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance < this.config.mouseRepelRadius) {
+                let forceMagnitude = (this.config.mouseRepelRadius - distance) / this.config.mouseRepelRadius;
+                let force = new Vector2D(dx, dy);
+                force.normalize();
+                force.mult(forceMagnitude * this.config.mouseForce);
+                p.applyForce(force);
+            }
+        }
+    }
+
+    drawConnections() {
         for (let i = 0; i < this.particles.length; i++) {
             for (let j = i + 1; j < this.particles.length; j++) {
-                const p1 = this.particles[i];
-                const p2 = this.particles[j];
-                const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
-                if (dist < 130) {
+                let p1 = this.particles[i];
+                let p2 = this.particles[j];
+                let dx = p1.pos.x - p2.pos.x;
+                let dy = p1.pos.y - p2.pos.y;
+                let distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < this.config.connectionDistance) {
                     this.ctx.beginPath();
-                    this.ctx.moveTo(p1.x, p1.y);
-                    this.ctx.lineTo(p2.x, p2.y);
-                    this.ctx.strokeStyle = `rgba(0, 102, 255, ${1 - dist / 130})`;
-                    this.ctx.lineWidth = 0.5;
+                    this.ctx.moveTo(p1.pos.x, p1.pos.y);
+                    this.ctx.lineTo(p2.pos.x, p2.pos.y);
+                    
+                    // Gradient calculation based on distance
+                    let opacity = (1 - (distance / this.config.connectionDistance)) * 0.15;
+                    this.ctx.strokeStyle = `rgba(100, 150, 255, ${opacity})`;
+                    this.ctx.lineWidth = 1;
                     this.ctx.stroke();
                 }
             }
@@ -218,260 +202,416 @@ class PhysicsEngine {
     }
 
     animate() {
-        this.ctx.clearRect(0, 0, this.width, this.height);
-        this.ctx.fillStyle = '#000511';
-        this.ctx.fillRect(0, 0, this.width, this.height);
+        // Deep space background fill
+        this.ctx.fillStyle = '#000814';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        this.particles.forEach(p => {
-            p.x += p.vx;
-            p.y += p.vy;
-            if (p.x < 0 || p.x > this.width) p.vx *= -1;
-            if (p.y < 0 || p.y > this.height) p.vy *= -1;
+        this.applyMouseInteraction();
 
-            this.ctx.beginPath();
-            this.ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-            this.ctx.fillStyle = p.color;
-            this.ctx.fill();
-        });
+        for (let p of this.particles) {
+            p.update();
+            p.draw(this.ctx);
+        }
 
-        this.drawLines();
-        requestAnimationFrame(() => this.animate());
+        this.drawConnections();
+
+        requestAnimationFrame(this.animate.bind(this));
     }
 }
 
 // ============================================================================
-// [5] DB MANAGER - ЛОКАЛЬНОЕ ХРАНИЛИЩЕ
+// [2] LOCAL STORAGE MANAGER (ENCRYPTED MOCKUP)
 // ============================================================================
-class DBManager {
-    constructor() {
-        this.storageKey = 'flame_ai_v14_data';
-        this.activeKey = 'flame_ai_active_session';
-        this.history = this.load();
+class StorageManager {
+    constructor(dbKey) {
+        this.dbKey = dbKey;
+        this.cache = this.load();
     }
 
     load() {
         try {
-            const data = localStorage.getItem(this.storageKey);
+            const data = localStorage.getItem(this.dbKey);
             return data ? JSON.parse(data) : [];
-        } catch (e) { return []; }
+        } catch (error) {
+            console.error("[StorageManager] Data corruption detected. Resetting database.");
+            return [];
+        }
     }
 
-    save() {
-        localStorage.setItem(this.storageKey, JSON.stringify(this.history));
+    save(data) {
+        try {
+            // In a real PC app, we might use IndexedDB or base64 encode this
+            localStorage.setItem(this.dbKey, JSON.stringify(data));
+            this.cache = data;
+        } catch (error) {
+            console.error("[StorageManager] Storage quota exceeded.", error);
+        }
     }
 
-    getActiveId() { return localStorage.getItem(this.activeKey); }
-    setActiveId(id) { localStorage.setItem(this.activeKey, id); }
-
-    addChat(id, title) {
-        this.history.unshift({ id, title, messages: [], timestamp: Date.now() });
-        this.save();
+    getChat(id) {
+        return this.cache.find(chat => chat.id === id) || null;
     }
 
-    getChat(id) { return this.history.find(c => c.id === id); }
-    
-    updateMessages(id, msgs) {
-        const chat = this.getChat(id);
-        if (chat) {
-            chat.messages = msgs;
-            this.save();
+    getAllChats() {
+        return this.cache;
+    }
+
+    addChat(chatObj) {
+        this.cache.unshift(chatObj);
+        this.save(this.cache);
+    }
+
+    updateChat(id, updatedData) {
+        const index = this.cache.findIndex(c => c.id === id);
+        if (index !== -1) {
+            this.cache[index] = { ...this.cache[index], ...updatedData };
+            this.save(this.cache);
         }
     }
 
     deleteChat(id) {
-        this.history = this.history.filter(c => c.id !== id);
-        this.save();
+        this.cache = this.cache.filter(c => c.id !== id);
+        this.save(this.cache);
     }
 }
 
 // ============================================================================
-// [6] APP CORE - ГЛАВНЫЙ КОНТРОЛЛЕР FlameAI
+// [3] UI AND STATE CONTROLLER (DESKTOP WORKSPACE)
 // ============================================================================
-class FlameApp {
-    constructor() {
-        this.db = new DBManager();
-        this.vision = new VisionModule(this);
+class FlameUIManager {
+    constructor(storage) {
+        this.storage = storage;
+        this.activeChatId = localStorage.getItem('flame_active_workspace') || null;
         this.isProcessing = false;
 
+        // DOM Elements setup
         this.dom = {
-            chatContainer: document.getElementById('chat-messages'),
-            sidebar: document.getElementById('chat-list'),
-            input: document.getElementById('text-input'),
+            sidebarList: document.getElementById('chat-list'),
+            chatArea: document.getElementById('chat-messages'),
+            inputBox: document.getElementById('user-input'),
             sendBtn: document.getElementById('send-btn'),
-            newBtn: document.getElementById('new-chat-btn')
+            newChatBtn: document.getElementById('new-chat-btn')
         };
 
         this.init();
     }
 
     init() {
-        new PhysicsEngine();
-        this.setupListeners();
+        this.bindEvents();
+        const chats = this.storage.getAllChats();
         
-        if (!this.db.getActiveId() || !this.db.getChat(this.db.getActiveId())) {
-            this.createNewSession();
+        if (chats.length === 0) {
+            this.createNewWorkspace();
+        } else {
+            // Ensure active chat exists
+            if (!this.storage.getChat(this.activeChatId)) {
+                this.activeChatId = chats[0].id;
+                this.persistActiveChat();
+            }
+            this.renderSidebar();
+            this.renderChatWindow();
+        }
+        
+        // Auto-focus input on desktop load
+        if(this.dom.inputBox) {
+            setTimeout(() => this.dom.inputBox.focus(), 500);
+        }
+    }
+
+    persistActiveChat() {
+        localStorage.setItem('flame_active_workspace', this.activeChatId);
+    }
+
+    bindEvents() {
+        if(this.dom.newChatBtn) {
+            this.dom.newChatBtn.addEventListener('click', () => this.createNewWorkspace());
         }
 
-        this.renderSidebar();
-        this.renderChat();
+        if(this.dom.sendBtn) {
+            this.dom.sendBtn.addEventListener('click', () => this.processUserInput());
+        }
+
+        if(this.dom.inputBox) {
+            this.dom.inputBox.addEventListener('keydown', (e) => {
+                // Submit on Enter (but allow Shift+Enter for new line)
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.processUserInput();
+                }
+            });
+
+            // Auto-resize textarea logic
+            this.dom.inputBox.addEventListener('input', function() {
+                this.style.height = '56px'; // Reset base height
+                let scrollHeight = this.scrollHeight;
+                if (scrollHeight > 56 && scrollHeight < 200) {
+                    this.style.height = scrollHeight + 'px';
+                } else if (scrollHeight >= 200) {
+                    this.style.height = '200px';
+                }
+            });
+        }
     }
 
-    setupListeners() {
-        this.dom.sendBtn.onclick = () => this.handleSend();
-        this.dom.newBtn.onclick = () => this.createNewSession();
-        this.dom.input.onkeydown = (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                this.handleSend();
-            }
+    createNewWorkspace() {
+        const timestamp = Date.now();
+        const newChat = {
+            id: `workspace_${timestamp}_${Math.random().toString(36).substr(2, 5)}`,
+            title: "Новый процесс",
+            messages: [],
+            created_at: new Date().toISOString()
         };
+
+        this.storage.addChat(newChat);
+        this.activeChatId = newChat.id;
+        this.persistActiveChat();
+        
+        this.renderSidebar();
+        this.renderChatWindow();
+        if(this.dom.inputBox) this.dom.inputBox.focus();
     }
 
-    createNewSession() {
-        const id = 'flame_' + Date.now();
-        this.db.addChat(id, "Новая сессия FlameAI");
-        this.db.setActiveId(id);
-        this.vision.clear();
-        this.renderSidebar();
-        this.renderChat();
+    deleteWorkspace(id, event) {
+        event.stopPropagation(); // Prevent triggering chat selection
+        
+        // Confirm deletion mapping to standard desktop OS UX
+        if(confirm("Удалить этот лог чата навсегда?")) {
+            this.storage.deleteChat(id);
+            const remaining = this.storage.getAllChats();
+            
+            if (this.activeChatId === id) {
+                this.activeChatId = remaining.length > 0 ? remaining[0].id : null;
+                this.persistActiveChat();
+                
+                if (!this.activeChatId) {
+                    this.createNewWorkspace();
+                    return;
+                }
+            }
+            this.renderSidebar();
+            this.renderChatWindow();
+        }
     }
 
     renderSidebar() {
-        this.dom.sidebar.innerHTML = '';
-        this.db.history.forEach(session => {
-            const el = document.createElement('div');
-            el.className = `chat-item ${session.id === this.db.getActiveId() ? 'active' : ''}`;
-            el.innerHTML = `
-                <span class="chat-title-text">${session.title}</span>
-                <div class="chat-del-btn" onclick="event.stopPropagation(); window.flameCore.deleteSession('${session.id}')">✕</div>
-            `;
-            el.onclick = () => {
-                this.db.setActiveId(session.id);
-                this.renderSidebar();
-                this.renderChat();
-            };
-            this.dom.sidebar.appendChild(el);
-        });
-    }
-
-    deleteSession(id) {
-        this.db.deleteChat(id);
-        if (this.db.getActiveId() === id) {
-            const next = this.db.history[0];
-            if (next) this.db.setActiveId(next.id);
-            else this.createNewSession();
-        }
-        this.renderSidebar();
-        this.renderChat();
-    }
-
-    renderChat() {
-        this.dom.chatContainer.innerHTML = '';
-        const session = this.db.getChat(this.db.getActiveId());
-        if (!session) return;
-
-        session.messages.forEach(msg => {
-            this.appendMessageToUI(msg.role, msg.text, msg.image);
-        });
-        this.scrollChat();
-    }
-
-    appendMessageToUI(role, text, image = null, isTyping = false) {
-        const msgWrapper = document.createElement('div');
-        msgWrapper.className = `msg-wrapper ${role === 'user' ? 'user-align' : 'ai-align'}`;
+        if (!this.dom.sidebarList) return;
+        this.dom.sidebarList.innerHTML = '';
         
-        const bubble = document.createElement('div');
-        bubble.className = `bubble ${role === 'user' ? 'bubble-user' : 'bubble-ai'}`;
-
-        if (isTyping) {
-            bubble.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
-            msgWrapper.id = 'active-typing';
-        } else {
-            const parsed = FlameParser.parseResponse(text);
-            bubble.innerHTML = parsed.html;
+        const chats = this.storage.getAllChats();
+        
+        chats.forEach(chat => {
+            const el = document.createElement('div');
+            el.className = `chat-item ${chat.id === this.activeChatId ? 'active' : ''}`;
             
-            if (image) {
-                const imgEl = document.createElement('img');
-                imgEl.src = image;
-                imgEl.className = 'msg-image-content';
-                bubble.appendChild(imgEl);
-            }
-        }
+            el.innerHTML = `
+                <div class="chat-item-content">
+                    <svg class="chat-item-icon" viewBox="0 0 24 24">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <span class="chat-item-title">${this.escapeHTML(chat.title)}</span>
+                </div>
+                <div class="chat-item-delete" title="Delete Log">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </div>
+            `;
 
-        msgWrapper.appendChild(bubble);
-        this.dom.chatContainer.appendChild(msgWrapper);
-        this.scrollChat();
+            // Setup listeners
+            el.addEventListener('click', () => {
+                if (this.activeChatId === chat.id) return;
+                this.activeChatId = chat.id;
+                this.persistActiveChat();
+                this.renderSidebar();
+                this.renderChatWindow();
+            });
+
+            const delBtn = el.querySelector('.chat-item-delete');
+            delBtn.addEventListener('click', (e) => this.deleteWorkspace(chat.id, e));
+
+            this.dom.sidebarList.appendChild(el);
+        });
     }
 
-    async handleSend() {
+    renderChatWindow() {
+        if (!this.dom.chatArea) return;
+        this.dom.chatArea.innerHTML = '';
+
+        const activeChat = this.storage.getChat(this.activeChatId);
+        
+        if (!activeChat || activeChat.messages.length === 0) {
+            this.showWelcomeScreen();
+            return;
+        }
+
+        activeChat.messages.forEach(msg => {
+            this.appendMessageElement(msg.role, msg.text);
+        });
+
+        this.scrollToBottom();
+    }
+
+    showWelcomeScreen() {
+        this.dom.chatArea.innerHTML = `
+            <div class="welcome-screen">
+                <div class="welcome-icon">🔥</div>
+                <h1 class="welcome-title">Система FlameAI</h1>
+                <p class="welcome-subtitle">Ядро инициализировано и готово к работе. Ожидаю ввод данных на главном терминале.</p>
+            </div>
+        `;
+    }
+
+    escapeHTML(str) {
+        return str.replace(/[&<>'"]/g, tag => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+        }[tag] || tag));
+    }
+
+    formatTextForHTML(text) {
+        // Simple formatter for line breaks. In a full app, marked.js would be used here.
+        let safeText = this.escapeHTML(text);
+        return safeText.replace(/\n/g, '<br>');
+    }
+
+    appendMessageElement(role, text, isTyping = false) {
+        // Remove welcome screen if present
+        const welcome = this.dom.chatArea.querySelector('.welcome-screen');
+        if (welcome) welcome.remove();
+
+        const wrapper = document.createElement('div');
+        wrapper.className = `message-wrapper ${role === 'user' ? 'user-wrapper' : 'ai-wrapper'}`;
+
+        const senderName = document.createElement('div');
+        senderName.className = 'message-sender-name';
+        senderName.textContent = role === 'user' ? 'Терминал Пользователя' : 'FlameAI Core';
+        
+        const messageDiv = document.createElement('div');
+        
+        if (isTyping) {
+            messageDiv.className = 'typing-indicator';
+            messageDiv.innerHTML = `
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            `;
+            wrapper.id = 'flame-typing-indicator';
+        } else {
+            messageDiv.className = `message ${role === 'user' ? 'user-message' : 'ai-message'}`;
+            messageDiv.innerHTML = this.formatTextForHTML(text);
+        }
+
+        wrapper.appendChild(senderName);
+        wrapper.appendChild(messageDiv);
+        this.dom.chatArea.appendChild(wrapper);
+    }
+
+    scrollToBottom() {
+        requestAnimationFrame(() => {
+            this.dom.chatArea.scrollTo({
+                top: this.dom.chatArea.scrollHeight,
+                behavior: 'smooth'
+            });
+        });
+    }
+
+    removeTypingIndicator() {
+        const indicator = document.getElementById('flame-typing-indicator');
+        if (indicator) indicator.remove();
+    }
+
+    async processUserInput() {
         if (this.isProcessing) return;
         
-        const text = this.dom.input.value.trim();
-        const img = this.vision.getData();
+        const rawText = this.dom.inputBox.value.trim();
+        if (!rawText) return;
 
-        if (!text && !img) return;
-
+        // Reset input area sizing
+        this.dom.inputBox.value = '';
+        this.dom.inputBox.style.height = '56px';
+        
         this.isProcessing = true;
-        this.dom.input.value = '';
-        this.vision.clear();
+        const currentChat = this.storage.getChat(this.activeChatId);
 
-        const chatId = this.db.getActiveId();
-        const chat = this.db.getChat(chatId);
+        // Auto-generate title if it's the first message
+        if (currentChat.messages.length === 0) {
+            let newTitle = rawText.length > 25 ? rawText.substring(0, 25) + "..." : rawText;
+            currentChat.title = newTitle;
+            this.storage.updateChat(this.activeChatId, { title: newTitle });
+            this.renderSidebar(); // Update title in UI
+        }
 
-        // Сохраняем и отображаем юзера
-        chat.messages.push({ role: 'user', text: text, image: img });
-        this.appendMessageToUI('user', text, img);
+        // Save and Render User Message
+        currentChat.messages.push({ role: 'user', text: rawText });
+        this.storage.updateChat(this.activeChatId, { messages: currentChat.messages });
+        this.appendMessageElement('user', rawText);
+        this.scrollToBottom();
 
-        // Индикатор набора
-        this.appendMessageToUI('assistant', '', null, true);
+        // Render AI Typing state
+        this.appendMessageElement('assistant', '', true);
+        this.scrollToBottom();
 
-        // --- ЛОКАЛЬНАЯ ЛОГИКА (ВМЕСТО API) ---
-        setTimeout(() => {
-            const typingIndicator = document.getElementById('active-typing');
-            if (typingIndicator) typingIndicator.remove();
-
-            let responseText = "";
+        // Simulate Network Request to backend
+        try {
+            const response = await fetch('/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: rawText })
+            });
             
-            // Простая имитация "интеллекта" для теста
-            if (img) {
-                responseText = "Анализ изображения завершен. Визуальный паттерн распознан. Что мне сделать с этими данными?";
-            } else if (text.toLowerCase().includes("код")) {
-                responseText = "Конечно! Вот пример структуры на JavaScript:\n\n```javascript\nfunction flameAI() {\n  console.log('FlameAI Monolith v14 is Online');\n  return true;\n}\n```";
+            let replyText;
+            if (response.ok) {
+                const data = await response.json();
+                replyText = data.reply || "Пустой ответ от сервера.";
             } else {
-                responseText = "Локальное ядро FlameAI приветствует тебя. API отключено, работаю в автономном режиме.";
+                // If backend isn't connected, fallback to a graceful error
+                console.warn("[FlameAI Network] Server offline, using local simulation.");
+                await new Promise(r => setTimeout(r, 1500)); // Fake latency
+                replyText = "Подключение к серверному ядру прервано. Это локальная симуляция FlameAI.";
             }
 
-            chat.messages.push({ role: 'assistant', text: responseText });
-            this.db.updateMessages(chatId, chat.messages);
-            this.appendMessageToUI('assistant', responseText);
+            this.removeTypingIndicator();
             
+            // Save and render AI response
+            currentChat.messages.push({ role: 'assistant', text: replyText });
+            this.storage.updateChat(this.activeChatId, { messages: currentChat.messages });
+            this.appendMessageElement('assistant', replyText);
+            this.scrollToBottom();
+
+        } catch (error) {
+            console.error("[FlameAI Fetch Error]", error);
+            this.removeTypingIndicator();
+            
+            const errorMsg = "Критический сбой протокола связи. Проверьте соединение.";
+            currentChat.messages.push({ role: 'assistant', text: errorMsg });
+            this.storage.updateChat(this.activeChatId, { messages: currentChat.messages });
+            this.appendMessageElement('assistant', errorMsg);
+            this.scrollToBottom();
+        } finally {
             this.isProcessing = false;
-        }, 800);
-    }
-
-    scrollChat() {
-        requestAnimationFrame(() => {
-            this.dom.chatContainer.scrollTop = this.dom.chatContainer.scrollHeight;
-        });
-    }
-
-    copyToClipboard(btn) {
-        const code = btn.parentElement.nextElementSibling.innerText;
-        navigator.clipboard.writeText(code).then(() => {
-            btn.innerText = "Done!";
-            setTimeout(() => btn.innerText = "Copy", 2000);
-        });
+            if(this.dom.inputBox) this.dom.inputBox.focus();
+        }
     }
 }
 
-// Запуск системы
-window.addEventListener('DOMContentLoaded', () => {
-    window.flameCore = new FlameApp();
-    console.log("%c🔥 FlameAI Monolith Online", "color: #00e5ff; font-size: 20px; font-weight: bold;");
+// ============================================================================
+// [4] SYSTEM INITIALIZATION
+// ============================================================================
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Boot up hardware accelerated background
+    const bgEngine = new BackgroundEngine('bg-canvas');
+    
+    // 2. Initialize encrypted storage logic
+    const dbManager = new StorageManager('flameai_core_db_v13');
+    
+    // 3. Mount UI logic
+    const appUI = new FlameUIManager(dbManager);
+    
+    // Disable right-click in app for "software" feel
+    document.addEventListener('contextmenu', event => event.preventDefault());
+
+    console.log("=========================================");
+    console.log("🔥 FlameAI Core System Booted Successfully");
+    console.log("💻 Architecture: Pure Desktop Edition");
+    console.log("=========================================");
 });
-
-// Дополнительные системные вызовы для утяжеления файла
-function __systemDiagnostics() {
-    const memory = Math.random() * 1024;
-    return `System Status: OK | Buffer: ${memory.toFixed(2)}MB`;
-}

@@ -159,10 +159,27 @@ function startNewSession() {
 function addMessageToUI(role, content) {
     const messageWrapper = document.createElement('div');
     messageWrapper.className = `message ${role === 'user' ? 'user-message' : 'ai-message'}`;
-    messageWrapper.textContent = content;
+    
+    // ВМЕСТО messageWrapper.textContent используем это:
+    if (role === 'assistant') {
+        // Обработка текста для ИИ (переносы, жирный шрифт, спецсимволы)
+        let formattedContent = content
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>') // Жирный текст **так**
+            .replace(/\n/g, '<br>'); // ПЕРЕНОСЫ СТРОК
+            
+        messageWrapper.innerHTML = formattedContent;
+    } else {
+        // Для пользователя можно оставить просто переносы
+        messageWrapper.style.whiteSpace = "pre-wrap";
+        messageWrapper.textContent = content;
+    }
+
     elements.msgBox.appendChild(messageWrapper);
     
-    // Плавная прокрутка
+    // Плавная прокрутка (уже была у тебя, оставляем)
     elements.msgBox.scrollTo({
         top: elements.msgBox.scrollHeight,
         behavior: 'smooth'
@@ -247,3 +264,4 @@ window.addEventListener('load', () => {
     }
     console.log("FlameAI Kernel v11.0: Status Online");
 });
+

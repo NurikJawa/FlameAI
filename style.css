@@ -4,11 +4,9 @@
     padding: 0;
     box-sizing: border-box;
     font-family: 'Inter', -apple-system, system-ui, sans-serif;
-    /* ПОЛНОЕ УДАЛЕНИЕ БЕЛЫХ ПОЛОС И РАМОК ПРИ НАЖАТИИ */
     outline: none !important;
     border: none;
     -webkit-tap-highlight-color: transparent;
-    user-select: none;
 }
 
 :root {
@@ -151,7 +149,6 @@ body {
     border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-/* МОБИЛЬНАЯ СТРЕЛКА/БУРГЕР */
 .menu-toggle {
     display: none;
     font-size: 30px;
@@ -167,10 +164,10 @@ body {
     padding: 50px 18%;
     display: flex;
     flex-direction: column;
-    gap: 18px; /* КОМПАКТНОСТЬ */
+    gap: 18px; 
 }
 
-/* --- СООБЩЕНИЯ (АККУРАТНЫЕ И КОМПАКТНЫЕ) --- */
+/* --- СООБЩЕНИЯ --- */
 .message {
     max-width: 58%;
     padding: 14px 22px;
@@ -182,6 +179,8 @@ body {
     animation: slideUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
     position: relative;
     user-select: text;
+    white-space: pre-wrap; /* ВАЖНО: сохраняет пробелы, лесенки кода и переносы */
+    word-wrap: break-word; /* ВАЖНО: не дает длинному тексту сломать дизайн */
 }
 
 @keyframes slideUp {
@@ -227,6 +226,7 @@ body {
     padding: 24px 90px 24px 35px;
     color: white;
     font-size: 16px;
+    resize: none; /* Запрет растягивать поле вручную */
 }
 
 #send-btn {
@@ -251,7 +251,7 @@ body {
     box-shadow: 0 0 30px var(--accent-glow);
 }
 
-/* --- !!! ГОРЯЧИЙ ФИКС ДЛЯ ТЕЛЕФОНОВ (ONLY MOBILE) !!! --- */
+/* --- МОБИЛЬНАЯ ВЕРСИЯ --- */
 @media (max-width: 768px) {
     .menu-toggle { display: block; }
 
@@ -259,7 +259,7 @@ body {
         position: fixed;
         left: 0;
         top: 0;
-        transform: translateX(-100%); /* СКРЫТ ЗА ЭКРАНОМ */
+        transform: translateX(-100%);
         width: 85%;
         height: 100%;
         box-shadow: 30px 0 70px rgba(0,0,0,1);
@@ -267,7 +267,7 @@ body {
     }
 
     .sidebar.active {
-        transform: translateX(0); /* ВЫЕЗЖАЕТ ПРИ КЛИКЕ НА СТРЕЛКУ */
+        transform: translateX(0);
     }
 
     .overlay {
@@ -289,7 +289,3 @@ body {
 /* СКРОЛЛБАР */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
-
-    .message {
-    white-space: pre-wrap; /* Это заставит браузер видеть пробелы и отступы */
-}

@@ -7,14 +7,12 @@
 const canvas = document.getElementById('bg-canvas');
 const ctx = canvas.getContext('2d');
 let triangles = [];
-let mouse = { x: null, y: null };
 
 function initCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     triangles = [];
     
-    // Создаем массив объектов треугольников с уникальными параметрами
     for (let i = 0; i < 70; i++) {
         triangles.push({
             x: Math.random() * canvas.width,
@@ -34,7 +32,6 @@ function initCanvas() {
 function drawScene() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Отрисовка динамических связей (Нейронная паутина)
     for (let i = 0; i < triangles.length; i++) {
         for (let j = i + 1; j < triangles.length; j++) {
             const t1 = triangles[i];
@@ -53,7 +50,6 @@ function drawScene() {
         }
     }
 
-    // Отрисовка треугольников с вращением
     triangles.forEach(t => {
         t.x += t.vx;
         t.y += t.vy;
@@ -61,7 +57,6 @@ function drawScene() {
         t.opacity += t.pulse;
         if(t.opacity > 0.3 || t.opacity < 0.1) t.pulse *= -1;
 
-        // Отскок от краев (Логика бесконечного пространства)
         if (t.x < -50) t.x = canvas.width + 50;
         if (t.x > canvas.width + 50) t.x = -50;
         if (t.y < -50) t.y = canvas.height + 50;
@@ -90,7 +85,7 @@ window.addEventListener('resize', initCanvas);
 initCanvas();
 drawScene();
 
-// --- 2. ЛОГИКА МОБИЛЬНОГО МЕНЮ (СЛАЙДЕР) ---
+// --- 2. ЛОГИКА МОБИЛЬНОГО МЕНЮ ---
 const sidebar = document.querySelector('.sidebar');
 const overlay = document.createElement('div');
 overlay.className = 'overlay';
@@ -160,26 +155,21 @@ function addMessageToUI(role, content) {
     const messageWrapper = document.createElement('div');
     messageWrapper.className = `message ${role === 'user' ? 'user-message' : 'ai-message'}`;
     
-    // ВМЕСТО messageWrapper.textContent используем это:
     if (role === 'assistant') {
-        // Обработка текста для ИИ (переносы, жирный шрифт, спецсимволы)
+        // Экранируем HTML-теги, но оставляем \n, так как CSS (pre-wrap) сам сделает переносы
         let formattedContent = content
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
-            .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>') // Жирный текст **так**
-            .replace(/\n/g, '<br>'); // ПЕРЕНОСЫ СТРОК
+            .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>'); // Жирный текст
             
         messageWrapper.innerHTML = formattedContent;
     } else {
-        // Для пользователя можно оставить просто переносы
-        messageWrapper.style.whiteSpace = "pre-wrap";
         messageWrapper.textContent = content;
     }
 
     elements.msgBox.appendChild(messageWrapper);
     
-    // Плавная прокрутка (уже была у тебя, оставляем)
     elements.msgBox.scrollTo({
         top: elements.msgBox.scrollHeight,
         behavior: 'smooth'
@@ -203,25 +193,22 @@ async function processMessage() {
 
     const activeIndex = state.allChats.findIndex(c => c.id === state.currentId);
     
-    // Переименование первого чата
     if (state.allChats[activeIndex].messages.length === 0) {
         state.allChats[activeIndex].title = text.substring(0, 20) + (text.length > 20 ? "..." : "");
     }
 
-    // Юзер
     state.allChats[activeIndex].messages.push({ role: 'user', text: text });
     addMessageToUI('user', text);
     elements.inputArea.value = '';
     state.isProcessing = true;
     syncData();
 
-    // Визуальный индикатор
     const typing = document.createElement('div');
     typing.className = 'message ai-message';
     typing.style.opacity = '0.5';
     typing.textContent = 'FlameAI печатает...';
     elements.msgBox.appendChild(typing);
-    elements.msgBox.scrollTop = elements.msgBox.scrollHeight;
+    elements.msgBox.scrollTo({ top: elements.msgBox.scrollHeight, behavior: 'smooth' });
 
     try {
         const response = await fetch('/chat', {
@@ -246,18 +233,22 @@ async function processMessage() {
     }
 }
 
-// СОБЫТИЯ И ГОРЯЧИЕ КЛАВИШИ
+// --- 5. СОБЫТИЯ И ГОРЯЧИЕ КЛАВИШИ ---
 document.getElementById('send-btn').addEventListener('click', processMessage);
-// ВСТАВЬ ЭТО:
+
 elements.inputArea.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { 
-        e.preventDefault(); // Не дает сделать перенос, а отправляет
+        e.preventDefault(); 
         processMessage();
     }
-    // Если нажат Shift + Enter, этот код не сработает, и будет просто перенос строки
 });
+
+document.getElementById('new-chat-btn').addEventListener('click', () => {
+    startNewSession();
+    if (window.innerWidth <= 768 && sidebar.classList.contains('active')) {
+        toggleSidebar();
+    }
 });
-document.getElementById('new-chat-btn').addEventListener('click', startNewSession);
 
 // ИНИЦИАЛИЗАЦИЯ ПРИ ЗАПУСКЕ
 window.addEventListener('load', () => {
@@ -270,5 +261,3 @@ window.addEventListener('load', () => {
     }
     console.log("FlameAI Kernel v11.0: Status Online");
 });
-
-

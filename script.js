@@ -248,8 +248,14 @@ async function processMessage() {
 
 // СОБЫТИЯ И ГОРЯЧИЕ КЛАВИШИ
 document.getElementById('send-btn').addEventListener('click', processMessage);
-elements.inputArea.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') processMessage();
+// ВСТАВЬ ЭТО:
+elements.inputArea.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { 
+        e.preventDefault(); // Не дает сделать перенос, а отправляет
+        processMessage();
+    }
+    // Если нажат Shift + Enter, этот код не сработает, и будет просто перенос строки
+});
 });
 document.getElementById('new-chat-btn').addEventListener('click', startNewSession);
 
@@ -264,4 +270,5 @@ window.addEventListener('load', () => {
     }
     console.log("FlameAI Kernel v11.0: Status Online");
 });
+
 
